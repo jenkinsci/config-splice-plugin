@@ -23,6 +23,7 @@ import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.verb.POST;
 
 /**
  * One replacement: a property path plus exactly one source of the new value (SRS section 4.5).
@@ -154,7 +155,26 @@ public class Substitution extends AbstractDescribableImpl<Substitution> {
             return Messages.Substitution_DisplayName();
         }
 
-        public FormValidation doCheckPath(@QueryParameter String value) {
+        /**
+         * Requires configure permission on the item being edited, or overall administer when there is
+         * no item context yet.
+         *
+         * <p>Applied to every web method here, including the ones that only inspect a string. Form
+         * validation endpoints are reachable by anyone who can guess the URL, so "this one is cheap
+         * and leaks nothing" is a judgement that has to be re-made correctly every time the method
+         * changes. Checking unconditionally removes that judgement.
+         */
+        private static void checkConfigurePermission(@CheckForNull Item item) {
+            if (item == null) {
+                Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+            } else {
+                item.checkPermission(Item.CONFIGURE);
+            }
+        }
+
+        @POST
+        public FormValidation doCheckPath(@AncestorInPath Item item, @QueryParameter String value) {
+            checkConfigurePermission(item);
             if (value == null || value.isBlank()) {
                 return FormValidation.error(Messages.Substitution_PathRequired());
             }
@@ -167,7 +187,12 @@ public class Substitution extends AbstractDescribableImpl<Substitution> {
          * <p>Advisory only. Literal step arguments are persisted and displayed by Pipeline metadata,
          * so a secret placed here is disclosed regardless of what this check says (SRS section 12.3).
          */
-        public FormValidation doCheckValue(@QueryParameter String value, @QueryParameter String credentialsId) {
+        @POST
+        public FormValidation doCheckValue(
+                @AncestorInPath Item item,
+                @QueryParameter String value,
+                @QueryParameter String credentialsId) {
+            checkConfigurePermission(item);
             boolean hasCredential = credentialsId != null && !credentialsId.isBlank();
             if (value != null && !value.isEmpty() && hasCredential) {
                 return FormValidation.error(Messages.Substitution_BothSources());
@@ -192,6 +217,7 @@ public class Substitution extends AbstractDescribableImpl<Substitution> {
          * may not use credentials in this context gets back only the value already configured, so the
          * dropdown cannot be used to enumerate credential IDs the caller is not entitled to see.
          */
+        @POST
         public ListBoxModel doFillCredentialsIdItems(
                 @AncestorInPath Item item, @QueryParameter String credentialsId) {
 
@@ -217,6 +243,7 @@ public class Substitution extends AbstractDescribableImpl<Substitution> {
         }
 
         /** Confirms the selected credential is resolvable, without revealing anything if it is not. */
+        @POST
         public FormValidation doCheckCredentialsId(
                 @AncestorInPath Item item, @QueryParameter String value) {
 

@@ -255,12 +255,26 @@ public class ConfigSubstitutionStep extends Step {
             return Set.of(Run.class, FilePath.class, TaskListener.class);
         }
 
-        public hudson.util.ListBoxModel doFillNoMatchBehaviorItems() {
+        @org.kohsuke.stapler.verb.POST
+        public hudson.util.ListBoxModel doFillNoMatchBehaviorItems(
+                @org.kohsuke.stapler.AncestorInPath hudson.model.Item item) {
+            checkConfigurePermission(item);
             return behaviorItems();
         }
 
-        public hudson.util.ListBoxModel doFillMissingPathBehaviorItems() {
+        @org.kohsuke.stapler.verb.POST
+        public hudson.util.ListBoxModel doFillMissingPathBehaviorItems(
+                @org.kohsuke.stapler.AncestorInPath hudson.model.Item item) {
+            checkConfigurePermission(item);
             return behaviorItems();
+        }
+
+        private static void checkConfigurePermission(@CheckForNull hudson.model.Item item) {
+            if (item == null) {
+                jenkins.model.Jenkins.get().checkPermission(jenkins.model.Jenkins.ADMINISTER);
+            } else {
+                item.checkPermission(hudson.model.Item.CONFIGURE);
+            }
         }
 
         private static hudson.util.ListBoxModel behaviorItems() {

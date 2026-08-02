@@ -30,12 +30,9 @@
     </license>
   </licenses>
 
-  <developers>
-    <developer>
-      <id>sssousa</id>
-      <name>Samuel Sousa</name>
-    </developer>
-  </developers>
+  <!-- Maintainer information is deliberately absent: it is fetched from
+       jenkins-infra/repository-permissions-updater and shown on the update site, and the hosting
+       checker rejects a developer section declared here. -->
 
   <scm>
     <connection>scm:git:https://github.com/jenkinsci/config-splice-plugin.git</connection>

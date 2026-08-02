@@ -158,11 +158,11 @@ class ConfigRoundTripTest {
                 j.jenkins.getDescriptorByType(ConfigSubstitutionStep.DescriptorImpl.class);
         assertEquals(
                 List.of("fail", "warn", "ignore"),
-                values(stepDescriptor.doFillNoMatchBehaviorItems()),
+                values(stepDescriptor.doFillNoMatchBehaviorItems(null)),
                 "no-match policy options");
         assertEquals(
                 List.of("fail", "warn", "ignore"),
-                values(stepDescriptor.doFillMissingPathBehaviorItems()),
+                values(stepDescriptor.doFillMissingPathBehaviorItems(null)),
                 "missing-path policy options");
 
         TargetGroup.DescriptorImpl groupDescriptor =
@@ -175,6 +175,48 @@ class ConfigRoundTripTest {
                 List.of("auto", "string", "number", "boolean", "null"),
                 values(substitutionDescriptor.doFillTypeItems()),
                 "value type options must match Section 4.5 exactly");
+    }
+
+    @Test
+    @DisplayName("form validation endpoints refuse an unauthorised caller")
+    void formValidationRequiresPermission(JenkinsRule j) throws Exception {
+        // Every doCheck/doFill endpoint is reachable by anyone who can guess the URL, so each one
+        // checks permission even when it only inspects a string. Verified rather than assumed,
+        // because the Jenkins security scan flags exactly this and a missing check is silent.
+        j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
+        j.jenkins.setAuthorizationStrategy(new org.jvnet.hudson.test.MockAuthorizationStrategy()
+                .grant(jenkins.model.Jenkins.READ)
+                .everywhere()
+                .toAuthenticated());
+
+        Substitution.DescriptorImpl substitutions =
+                j.jenkins.getDescriptorByType(Substitution.DescriptorImpl.class);
+        ConfigSubstitutionStep.DescriptorImpl step =
+                j.jenkins.getDescriptorByType(ConfigSubstitutionStep.DescriptorImpl.class);
+
+        try (hudson.security.ACLContext ignored =
+                hudson.security.ACL.as2(jenkins.model.Jenkins.ANONYMOUS2)) {
+
+            org.junit.jupiter.api.Assertions.assertThrows(
+                    org.springframework.security.access.AccessDeniedException.class,
+                    () -> substitutions.doCheckPath(null, "anything"),
+                    "doCheckPath must refuse an unauthorised caller");
+
+            org.junit.jupiter.api.Assertions.assertThrows(
+                    org.springframework.security.access.AccessDeniedException.class,
+                    () -> substitutions.doCheckValue(null, "v", ""),
+                    "doCheckValue must refuse an unauthorised caller");
+
+            org.junit.jupiter.api.Assertions.assertThrows(
+                    org.springframework.security.access.AccessDeniedException.class,
+                    () -> step.doFillNoMatchBehaviorItems(null),
+                    "doFillNoMatchBehaviorItems must refuse an unauthorised caller");
+
+            org.junit.jupiter.api.Assertions.assertThrows(
+                    org.springframework.security.access.AccessDeniedException.class,
+                    () -> step.doFillMissingPathBehaviorItems(null),
+                    "doFillMissingPathBehaviorItems must refuse an unauthorised caller");
+        }
     }
 
     @Test
