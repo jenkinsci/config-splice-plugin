@@ -2,7 +2,12 @@
 <j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
 
   <f:entry title="${%Target groups}">
-    <f:repeatableProperty field="targets" minimum="1" add="${%Add target group}"/>
+    <!-- The nested delete button is required: without it a second and subsequent group cannot be
+         removed at all. Note that on cores before 2.550 the button also appears for the single
+         remaining entry despite minimum="1", which is a core bug rather than a mistake here. -->
+    <f:repeatableProperty field="targets" minimum="1" add="${%Add target group}">
+      <f:repeatableDeleteButton/>
+    </f:repeatableProperty>
   </f:entry>
 
   <f:entry title="${%Dry run}" field="dryRun">

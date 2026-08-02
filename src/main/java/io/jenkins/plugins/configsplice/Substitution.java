@@ -6,6 +6,7 @@ import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
+import hudson.Util;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
 import hudson.model.Item;
@@ -63,9 +64,16 @@ public class Substitution extends AbstractDescribableImpl<Substitution> {
      * <p>Never put a secret here: literal step arguments are persisted and displayed by Pipeline
      * metadata (SRS section 12.3). Use {@link #setCredentialsId} instead.
      */
+    /**
+     * A literal replacement.
+     *
+     * <p>Uses {@link Util#fixEmpty} rather than {@code fixEmptyAndTrim}: a literal is written into
+     * the user's configuration file verbatim, so trimming it here would silently alter data. Only a
+     * genuinely empty submission becomes "not supplied".
+     */
     @DataBoundSetter
     public void setValue(@CheckForNull String value) {
-        this.value = blankToNull(value);
+        this.value = Util.fixEmpty(value);
     }
 
     @CheckForNull
@@ -73,26 +81,20 @@ public class Substitution extends AbstractDescribableImpl<Substitution> {
         return credentialsId;
     }
 
+    /**
+     * A Secret Text credential ID.
+     *
+     * <p>Trimmed, unlike {@link #setValue}: an identifier with surrounding whitespace is always a
+     * paste accident, never intent.
+     *
+     * <p>Both setters normalise an untouched form field to {@code null}. An HTML text input always
+     * submits a string, so a field nobody filled in arrives as {@code ""} rather than absent, and
+     * {@code DescribableModel} only omits values equal to the declared default — leaving the Snippet
+     * Generator to emit noise such as {@code credentialsId: ''}.
+     */
     @DataBoundSetter
     public void setCredentialsId(@CheckForNull String credentialsId) {
-        this.credentialsId = blankToNull(credentialsId);
-    }
-
-    /**
-     * Normalises an untouched form field to {@code null}.
-     *
-     * <p>An HTML text input always submits a string, so a field the user never filled in arrives as
-     * {@code ""} rather than absent. Without this, the Snippet Generator emits noise such as
-     * {@code credentialsId: ''} for fields that were never set, because {@code DescribableModel} only
-     * omits values equal to the declared default.
-     *
-     * <p>Nothing is lost: {@link #validateAndParseType()} already treats an empty string as "no value
-     * supplied", so blank and null were never distinguishable. Substituting a deliberately empty
-     * string is therefore not expressible in Version 1.0 — see the note on this method's caller.
-     */
-    @CheckForNull
-    private static String blankToNull(@CheckForNull String raw) {
-        return (raw == null || raw.isBlank()) ? null : raw;
+        this.credentialsId = Util.fixEmptyAndTrim(credentialsId);
     }
 
     @NonNull

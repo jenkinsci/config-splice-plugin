@@ -34,10 +34,6 @@ configSubstitution(
 Groups pair file patterns with the substitutions that apply **only** to those files, so XML paths are
 never applied to JSON files.
 
-## Requirements
-
-Jenkins **2.541.3** or newer, on **Java 17** or newer.
-
 ## Property paths
 
 ### JSON
@@ -89,11 +85,26 @@ Folder-scoped credentials resolve correctly.
 > - **The value crosses the agent channel in the clear.** `hudson.util.Secret` protects the stored
 >   form, not transport. Confidentiality depends on the agent channel being encrypted and the agent
 >   host being trusted — as it does for any Jenkins credential used on an agent.
-> - **Never put a secret in `value:`.** Literal step arguments are persisted with the build and shown
->   by Pipeline visualisation.
+> - **Do not hard-code a secret in `value:`.** A literal is persisted with the build and shown by
+>   Pipeline visualisation.
 >
 > Resolved credentials never appear in build logs, exception messages, the returned result or
 > persisted build metadata.
+
+Where one credential supplies several values, `withCredentials` works too — the value is masked in
+the log and Pipeline stores the step argument as `${MY_PASS}` rather than the secret itself:
+
+```groovy
+withCredentials([usernamePassword(credentialsId: 'my-secret',
+                                  usernameVariable: 'MY_USER',
+                                  passwordVariable: 'MY_PASS')]) {
+    configSubstitution(targets: [[files: ['*.json'], format: 'json',
+        substitutions: [
+            [path: 'user', value: env.MY_USER, type: 'string'],
+            [path: 'pass', value: env.MY_PASS, type: 'string']
+        ]]])
+}
+```
 
 ## Options
 
@@ -130,23 +141,38 @@ per-pattern and per-substitution records. The result contains no values and no c
   target is either fully old or fully new, never truncated.
 - **Re-running changes nothing.** A run that would produce identical bytes performs no write and
   leaves the modification time untouched.
-- **Files are confined to the workspace**, including against Windows directory junctions.
+- **Files are confined to the workspace**, including against Windows directory junctions. Symbolic
+  links and junctions are refused as targets even when they resolve inside, because replacing one
+  would destroy the link rather than update the file it points at.
+- **A read-only or unwritable target is refused** — on Linux as well as Windows, even though a POSIX
+  rename would technically succeed.
+- **On Windows, a replacement blocked by another process is retried** briefly before failing.
+  Antivirus and IIS hold `web.config` open routinely. The retry never engages on Linux.
+- **A file changed on disk between planning and writing is detected and not overwritten.**
+- If several files are written and one fails after others succeeded, the step fails and names both
+  the failed file and every file already committed. The failed file keeps its original bytes.
 
 ## Limitations
 
 - **UTF-8 only.** UTF-16 files, and XML declarations naming `us-ascii`, `iso-8859-1` or
-  `windows-1252`, are rejected rather than transcoded.
-- **XML support is the two shorthands above.** Generic element traversal, arbitrary attributes and
-  element text are not supported. **XDT transforms are out of scope** — this plugin substitutes
-  values, it does not run `Web.Release.config`.
-- **One target group per file.** A file matched by two groups is rejected.
+  `windows-1252`, are rejected before modification rather than transcoded.
+- **XML support is the two shorthands above.** Generic element traversal, arbitrary attributes,
+  element text and XML indexes are not supported. **XDT transforms are out of scope** — this plugin
+  substitutes values, it does not run `Web.Release.config`.
+- **`appSettings file="..."` is not followed**, and entries inside `<location>` are not matched by the
+  shorthand.
+- **One target group per file.** A file matched by two groups is rejected; consolidate the group or
+  use non-overlapping patterns.
+- **Only scalars.** JSON objects and arrays cannot be replaced wholesale.
+- **A deliberately empty string is not expressible.** A blank value means "not supplied".
+- **Windows ACLs are inherited, not copied.** A replaced file inherits its directory's ACL. Explicit,
+  non-inherited entries set directly on a configuration file are not carried across.
 - **Pipeline only.** No Freestyle build step in this release.
-
-The [changelog](CHANGELOG.md) has the complete list.
+- Files are expected to be at most a few MiB.
 
 ## Documentation
 
-- [Changelog](CHANGELOG.md) — release contents, security notes and known limitations
+- **Release notes** — see the Releases tab on the plugin site, generated from GitHub releases
 - [Development](docs/development.md) — building, CI, architecture and decision records
 - [Contributing](CONTRIBUTING.md)
 

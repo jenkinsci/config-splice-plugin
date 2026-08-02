@@ -11,7 +11,8 @@
 - [ ] If file handling changed, it was exercised on **both** Windows and Linux
 - [ ] No replacement value can reach a log, exception message or `toString()`
 - [ ] The `engine` package still has no Jenkins imports
-- [ ] `CHANGELOG.md` updated if the change is user-visible
+- [ ] A release-drafter label is set on this PR, so the release notes categorise it correctly
+- [ ] `README.md` updated if the change alters documented behaviour or limitations
 - [ ] An ADR added or updated if this changes a design decision
 
 ### Anything reviewers should look at closely?

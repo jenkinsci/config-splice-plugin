@@ -14,7 +14,11 @@
   </f:entry>
 
   <f:entry title="${%Substitutions}">
-    <f:repeatableProperty field="substitutions" minimum="1" add="${%Add substitution}"/>
+    <!-- See the note in ConfigSubstitutionStep/config.jelly: without the nested delete button a
+         second and subsequent substitution cannot be removed. -->
+    <f:repeatableProperty field="substitutions" minimum="1" add="${%Add substitution}">
+      <f:repeatableDeleteButton/>
+    </f:repeatableProperty>
   </f:entry>
 
 </j:jelly>

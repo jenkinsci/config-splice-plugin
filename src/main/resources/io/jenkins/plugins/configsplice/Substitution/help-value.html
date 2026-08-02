@@ -1,9 +1,27 @@
 <div>
   The replacement, as a literal.
   <p>
-    <b>Never put a secret here.</b> Literal step arguments are persisted with the build and displayed
-    by Pipeline visualisation, so a secret in this field is disclosed to anyone who can read the job.
-    Use the credential field instead.
+    <b>Do not hard-code a secret here.</b> A literal written into the step configuration is persisted
+    with the build and shown by Pipeline visualisation, so it is readable by anyone who can read the
+    job.
+  </p>
+  <p>
+    Referring to a credential through an environment variable <em>is</em> safe, and is a good option
+    when one credential supplies more than one value:
+  </p>
+  <pre>withCredentials([usernamePassword(credentialsId: 'my-secret',
+                                  usernameVariable: 'MY_USER',
+                                  passwordVariable: 'MY_PASS')]) {
+    configSubstitution(targets: [[files: ['*.json'], format: 'json',
+        substitutions: [
+            [path: 'user', value: env.MY_USER, type: 'string'],
+            [path: 'pass', value: env.MY_PASS, type: 'string']
+        ]]])
+}</pre>
+  <p>
+    Inside <code>withCredentials</code> the value is masked in the build log, and Pipeline replaces it
+    with <code>${MY_PASS}</code> before storing the step arguments, so it is not persisted. For a
+    single Secret Text, the credential field below is simpler.
   </p>
   <p>
     Always written as text here; how it is emitted into the file is decided by the value type.
