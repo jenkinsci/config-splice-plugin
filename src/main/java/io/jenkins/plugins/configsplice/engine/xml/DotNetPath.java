@@ -15,10 +15,13 @@ import java.util.Objects;
  * </pre>
  *
  * @param collection which .NET collection the path addresses
- * @param key        the literal {@code key}/{@code name} attribute value to match, exactly and case-sensitively
+ * @param entryName  the literal value of the identifying attribute to match, exactly and
+ *                   case-sensitively. Named for what it holds rather than for one collection's
+ *                   spelling of it: {@code appSettings} entries are identified by {@code key} and
+ *                   {@code connectionStrings} entries by {@code name}, and this is either.
  * @param attribute  the attribute on the matched {@code <add>} whose value is replaced
  */
-public record DotNetPath(Collection collection, String key, String attribute) {
+public record DotNetPath(Collection collection, String entryName, String attribute) {
 
     /** The two supported collections and the attribute each uses to identify an entry. */
     public enum Collection {
@@ -58,13 +61,13 @@ public record DotNetPath(Collection collection, String key, String attribute) {
 
     public DotNetPath {
         Objects.requireNonNull(collection, "collection");
-        Objects.requireNonNull(key, "key");
+        Objects.requireNonNull(entryName, "entryName");
         Objects.requireNonNull(attribute, "attribute");
     }
 
     /** The equivalent XPath, used in documentation and diagnostics. Contains no values. */
     public String equivalentXPath() {
         return "/configuration/" + collection.elementName() + "/add[@"
-                + collection.identifyingAttribute() + "='" + key + "']/@" + attribute;
+                + collection.identifyingAttribute() + "='" + entryName + "']/@" + attribute;
     }
 }

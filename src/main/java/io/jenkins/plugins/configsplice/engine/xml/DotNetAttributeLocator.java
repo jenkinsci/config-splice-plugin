@@ -73,7 +73,7 @@ public final class DotNetAttributeLocator {
             }
             if (ADD_ELEMENT.equals(tag.name()) && isDirectChildOfCollection(openElements, path)) {
                 XmlTagScanner.Attribute identifier = tag.attribute(path.collection().identifyingAttribute());
-                if (identifier != null && path.key().equals(decoded(text, identifier))) {
+                if (identifier != null && path.entryName().equals(decoded(text, identifier))) {
                     matches.add(tag);
                 }
             }

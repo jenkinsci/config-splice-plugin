@@ -73,14 +73,14 @@ public final class DotNetPathParser {
     private static DotNetPath parseQuotedRemainder(DotNetPath.Collection collection, String remainder)
             throws SpliceException {
 
-        StringBuilder key = new StringBuilder();
+        StringBuilder entryName = new StringBuilder();
         int i = 1;
         boolean closed = false;
         while (i < remainder.length()) {
             char c = remainder.charAt(i);
             if (c == '\'') {
                 if (i + 1 < remainder.length() && remainder.charAt(i + 1) == '\'') {
-                    key.append('\'');
+                    entryName.append('\'');
                     i += 2;
                     continue;
                 }
@@ -88,19 +88,19 @@ public final class DotNetPathParser {
                 closed = true;
                 break;
             }
-            key.append(c);
+            entryName.append(c);
             i++;
         }
         if (!closed) {
             throw new SpliceException(ErrorCode.PATH_SYNTAX, "unterminated quoted shorthand key");
         }
-        if (key.length() == 0) {
+        if (entryName.length() == 0) {
             throw new SpliceException(ErrorCode.PATH_SYNTAX, "quoted shorthand key must not be empty");
         }
 
         String tail = remainder.substring(i);
         if (tail.isEmpty()) {
-            return new DotNetPath(collection, key.toString(), collection.defaultTargetAttribute());
+            return new DotNetPath(collection, entryName.toString(), collection.defaultTargetAttribute());
         }
         String attribute = terminalSelectorAttribute(collection, tail);
         if (attribute == null) {
@@ -110,36 +110,36 @@ public final class DotNetPathParser {
                     ErrorCode.PATH_SYNTAX,
                     "unexpected text after the quoted shorthand key; expected a single terminal selector");
         }
-        return new DotNetPath(collection, key.toString(), attribute);
+        return new DotNetPath(collection, entryName.toString(), attribute);
     }
 
     private static DotNetPath parseRawRemainder(DotNetPath.Collection collection, String remainder)
             throws SpliceException {
 
-        String key = remainder;
+        String entryName = remainder;
         String attribute = collection.defaultTargetAttribute();
 
-        // Greedy: recognise at most one trailing selector, so any earlier occurrence stays in the key.
+        // Greedy: recognise at most one trailing selector, so any earlier occurrence stays in the name.
         for (String selector : selectorsFor(collection)) {
             if (remainder.length() > selector.length() && remainder.endsWith(selector)) {
-                key = remainder.substring(0, remainder.length() - selector.length());
+                entryName = remainder.substring(0, remainder.length() - selector.length());
                 attribute = selector.substring(2); // drop the leading ".@"
                 break;
             }
         }
 
-        if (key.isEmpty()) {
+        if (entryName.isEmpty()) {
             throw new SpliceException(ErrorCode.PATH_SYNTAX, "shorthand path is missing a key or name");
         }
-        if (!key.equals(key.strip())) {
+        if (!entryName.equals(entryName.strip())) {
             throw new SpliceException(
                     ErrorCode.PATH_SYNTAX, "shorthand key must not have leading or trailing whitespace");
         }
-        if (key.indexOf('\'') >= 0) {
+        if (entryName.indexOf('\'') >= 0) {
             throw new SpliceException(
                     ErrorCode.PATH_SYNTAX, "an unquoted shorthand key must not contain a single quote");
         }
-        return new DotNetPath(collection, key, attribute);
+        return new DotNetPath(collection, entryName, attribute);
     }
 
     private static String terminalSelectorAttribute(DotNetPath.Collection collection, String tail) {

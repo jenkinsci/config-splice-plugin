@@ -134,7 +134,19 @@ public class TargetGroup extends AbstractDescribableImpl<TargetGroup> {
             return (TargetGroup) super.newInstance(req, formData);
         }
 
-        public hudson.util.ListBoxModel doFillFormatItems() {
+        /** Same permission model as every other web method here; see Substitution.DescriptorImpl. */
+        private static void checkConfigurePermission(@CheckForNull hudson.model.Item item) {
+            if (item == null) {
+                jenkins.model.Jenkins.get().checkPermission(jenkins.model.Jenkins.ADMINISTER);
+            } else {
+                item.checkPermission(hudson.model.Item.CONFIGURE);
+            }
+        }
+
+        @org.kohsuke.stapler.verb.POST
+        public hudson.util.ListBoxModel doFillFormatItems(
+                @org.kohsuke.stapler.AncestorInPath hudson.model.Item item) {
+            checkConfigurePermission(item);
             hudson.util.ListBoxModel items = new hudson.util.ListBoxModel();
             items.add(Messages.TargetGroup_Format_auto(), "auto");
             items.add(Messages.TargetGroup_Format_json(), "json");

@@ -11,10 +11,10 @@ import org.junit.jupiter.api.Test;
 /** The selector-disambiguation cases from SRS section 8.2, which are easy to get subtly wrong. */
 class DotNetPathParserTest {
 
-    private static void assertParses(String path, String expectedKey, String expectedAttribute)
+    private static void assertParses(String path, String expectedEntryName, String expectedAttribute)
             throws SpliceException {
         DotNetPath parsed = DotNetPathParser.parse(path);
-        assertEquals(expectedKey, parsed.key(), "key of " + path);
+        assertEquals(expectedEntryName, parsed.entryName(), "entry name of " + path);
         assertEquals(expectedAttribute, parsed.attribute(), "attribute of " + path);
     }
 

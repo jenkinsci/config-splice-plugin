@@ -167,13 +167,13 @@ class ConfigRoundTripTest {
 
         TargetGroup.DescriptorImpl groupDescriptor =
                 j.jenkins.getDescriptorByType(TargetGroup.DescriptorImpl.class);
-        assertEquals(List.of("auto", "json", "xml"), values(groupDescriptor.doFillFormatItems()));
+        assertEquals(List.of("auto", "json", "xml"), values(groupDescriptor.doFillFormatItems(null)));
 
         Substitution.DescriptorImpl substitutionDescriptor =
                 j.jenkins.getDescriptorByType(Substitution.DescriptorImpl.class);
         assertEquals(
                 List.of("auto", "string", "number", "boolean", "null"),
-                values(substitutionDescriptor.doFillTypeItems()),
+                values(substitutionDescriptor.doFillTypeItems(null)),
                 "value type options must match Section 4.5 exactly");
     }
 
@@ -216,6 +216,18 @@ class ConfigRoundTripTest {
                     org.springframework.security.access.AccessDeniedException.class,
                     () -> step.doFillMissingPathBehaviorItems(null),
                     "doFillMissingPathBehaviorItems must refuse an unauthorised caller");
+
+            org.junit.jupiter.api.Assertions.assertThrows(
+                    org.springframework.security.access.AccessDeniedException.class,
+                    () -> substitutions.doFillTypeItems(null),
+                    "doFillTypeItems must refuse an unauthorised caller");
+
+            org.junit.jupiter.api.Assertions.assertThrows(
+                    org.springframework.security.access.AccessDeniedException.class,
+                    () -> j.jenkins
+                            .getDescriptorByType(TargetGroup.DescriptorImpl.class)
+                            .doFillFormatItems(null),
+                    "doFillFormatItems must refuse an unauthorised caller");
         }
     }
 

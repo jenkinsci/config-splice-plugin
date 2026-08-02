@@ -200,7 +200,9 @@ public class Substitution extends AbstractDescribableImpl<Substitution> {
             return FormValidation.ok();
         }
 
-        public ListBoxModel doFillTypeItems() {
+        @POST
+        public ListBoxModel doFillTypeItems(@AncestorInPath Item item) {
+            checkConfigurePermission(item);
             ListBoxModel items = new ListBoxModel();
             items.add(Messages.Substitution_Type_auto(), "auto");
             items.add(Messages.Substitution_Type_string(), "string");
