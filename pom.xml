@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.jenkins-ci.plugins</groupId>
+    <artifactId>plugin</artifactId>
+    <version>6.2211.v27f680c93c53</version>
+    <relativePath />
+  </parent>
+
+  <groupId>io.jenkins.plugins</groupId>
+  <artifactId>config-splice</artifactId>
+  <version>1.0.0-SNAPSHOT</version>
+  <packaging>hpi</packaging>
+
+  <name>Config Splice</name>
+  <description>Replaces existing scalar values in JSON and .NET XML configuration files from Jenkins Pipeline, preserving every unaffected source byte.</description>
+  <url>https://github.com/jenkinsci/config-splice-plugin</url>
+
+  <licenses>
+    <license>
+      <name>MIT License</name>
+      <url>https://opensource.org/licenses/MIT</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <scm>
+    <connection>scm:git:https://github.com/jenkinsci/config-splice-plugin.git</connection>
+    <developerConnection>scm:git:git@github.com:jenkinsci/config-splice-plugin.git</developerConnection>
+    <url>https://github.com/jenkinsci/config-splice-plugin</url>
+    <tag>HEAD</tag>
+  </scm>
+
+  <properties>
+    <!-- SRS 14.1: minimum core 2.541.3, compiled for Java 17 to maximise reach.
+         2.541.x is the newest LTS line that still supports Java 17; 2.555+ requires Java 21. -->
+    <jenkins.version>2.541.3</jenkins.version>
+    <maven.compiler.release>17</maven.compiler.release>
+    <gitHubRepo>jenkinsci/config-splice-plugin</gitHubRepo>
+  </properties>
+
+  <repositories>
+    <repository>
+      <id>repo.jenkins-ci.org</id>
+      <url>https://repo.jenkins-ci.org/public/</url>
+    </repository>
+  </repositories>
+  <pluginRepositories>
+    <pluginRepository>
+      <id>repo.jenkins-ci.org</id>
+      <url>https://repo.jenkins-ci.org/public/</url>
+    </pluginRepository>
+  </pluginRepositories>
+
+  <dependencyManagement>
+    <dependencies>
+      <!-- SRS 14.2: plugin versions come from the BOM matching the chosen baseline. -->
+      <dependency>
+        <groupId>io.jenkins.tools.bom</groupId>
+        <artifactId>bom-2.541.x</artifactId>
+        <version>6783.v88c6c30f4b_db_</version>
+        <scope>import</scope>
+        <type>pom</type>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <!-- Versions intentionally omitted: supplied by the BOM above (SRS 14.2). -->
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-step-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>credentials</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>plain-credentials</artifactId>
+    </dependency>
+    <!-- SRS 14.2: JSON comes through jackson2-api, never a direct com.fasterxml.jackson dependency. -->
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>jackson2-api</artifactId>
+    </dependency>
+  </dependencies>
+</project>

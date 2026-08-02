@@ -1,0 +1,18 @@
+target/
+work/
+*.hpi
+*.jpi
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+nbactions.xml
+nb-configuration.xml
+
+# OS
+.DS_Store
+Thumbs.db
