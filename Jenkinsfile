@@ -4,9 +4,8 @@
  *
  * Why this particular matrix
  * --------------------------
- * Most plugins can get away with a single platform. This one cannot: decision gates 3 and 4 found
- * behaviour that genuinely differs between Windows and Linux, and both differences would have
- * shipped as bugs if only one platform had been tested.
+ * Most plugins can get away with a single platform. This one cannot: two behaviours differ between
+ * Windows and Linux, and each would have shipped as a defect had only one platform been tested.
  *
  *   - Files.isSymbolicLink() returns false for a Windows directory junction, so a symlink-based
  *     confinement check would let a junction escape the workspace (ADR-004).
@@ -14,15 +13,17 @@
  *     carries a bounded retry that is inert on POSIX (ADR-002).
  *
  * So Windows is a required leg, not a nice-to-have. A green Linux build tells you very little about
- * the file-handling half of this plugin.
+ * the file-handling half of this plugin. Do not drop it to save build time.
  *
- *   linux / 17    the minimum supported baseline (Jenkins 2.541.3 targets Java 17)
- *   windows / 17  the same baseline on the platform whose file semantics differ
- *   linux / 21    forward compatibility, per SRS section 17.2
+ * On the JDK versions
+ * -------------------
+ * ci.jenkins.io accepts only JDK 21 and 25. The plugin still *targets* Java 17 bytecode — the parent
+ * POM derives that from jenkins.baseline 2.541, and javac --release 17 running on JDK 21 produces
+ * Java 17 class files — so controllers on Java 17 remain supported.
  *
- * Windows on JDK 21 is deliberately omitted: the platform differences found so far are in OS file
- * semantics rather than JDK version, so a fourth leg would roughly double CI time for little signal.
- * Add it if a JDK-specific difference ever turns up.
+ * The consequence worth knowing: CI never executes the suite on a Java 17 runtime. Compilation is
+ * pinned, execution is not. Run `mvn clean verify` on JDK 17 locally before a release if anything
+ * touched reflection, class loading or the module system.
  *
  * forkCount is pinned to one fork per core because much of this suite starts real Jenkins instances
  * (the credential and sandbox tests) and a real inbound agent (gate 2). Oversubscribing makes those
@@ -30,17 +31,16 @@
  *
  * Gate evidence
  * -------------
- * Each gate test prints a platform evidence table to stdout and writes it to
- * target/gate-evidence/. Surefire captures the stdout copy, so the per-platform findings are
- * readable from the archived test results of each leg - which is the intended way to compare
- * Windows against Linux after a change.
+ * Each gate test prints a platform evidence table to stdout and writes it to target/gate-evidence/.
+ * Surefire captures the stdout copy, so the per-platform findings are readable from the archived test
+ * results of each leg - the intended way to compare Windows against Linux after a change.
  */
 buildPlugin(
     useContainerAgent: true,
     forkCount: '1C',
     configurations: [
-        [platform: 'linux',   jdk: 17],
-        [platform: 'windows', jdk: 17],
         [platform: 'linux',   jdk: 21],
+        [platform: 'windows', jdk: 21],
+        [platform: 'linux',   jdk: 25],
     ]
 )

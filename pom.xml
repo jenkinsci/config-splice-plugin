@@ -13,7 +13,8 @@
 
   <groupId>io.jenkins.plugins</groupId>
   <artifactId>config-splice</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <!-- Resolved by the git-changelist extension in .mvn/; see the changelist property below. -->
+  <version>${changelist}</version>
   <packaging>hpi</packaging>
 
   <name>Config Splice</name>
@@ -29,6 +30,13 @@
     </license>
   </licenses>
 
+  <developers>
+    <developer>
+      <id>sssousa</id>
+      <name>Samuel Sousa</name>
+    </developer>
+  </developers>
+
   <scm>
     <connection>scm:git:https://github.com/jenkinsci/config-splice-plugin.git</connection>
     <developerConnection>scm:git:git@github.com:jenkinsci/config-splice-plugin.git</developerConnection>
@@ -37,11 +45,27 @@
   </scm>
 
   <properties>
-    <!-- SRS 14.1: minimum core 2.541.3, compiled for Java 17 to maximise reach.
-         2.541.x is the newest LTS line that still supports Java 17; 2.555+ requires Java 21. -->
-    <jenkins.version>2.541.3</jenkins.version>
-    <maven.compiler.release>17</maven.compiler.release>
+    <!-- Placeholder version for local and pull-request builds. The CD workflow replaces it with a
+         real version derived from the git history; see .mvn/maven.config. -->
+    <changelist>999999-SNAPSHOT</changelist>
+
+    <!-- SRS 14.1: minimum core 2.541.3. The baseline is a property so that the core version and the
+         plugin BOM below can never drift apart. The Java release level comes from the parent POM,
+         which derives it from this baseline. -->
+    <jenkins.baseline>2.541</jenkins.baseline>
+    <jenkins.version>${jenkins.baseline}.3</jenkins.version>
+
     <gitHubRepo>jenkinsci/config-splice-plugin</gitHubRepo>
+
+    <!-- Fail the build if a third-party library would be bundled into the HPI by accident. -->
+    <hpi.strictBundledArtifacts>true</hpi.strictBundledArtifacts>
+
+    <!-- Enforcement rules the parent POM ships but leaves opt-in. All are enabled deliberately:
+         each one catches a class of mistake that is cheap to prevent and awkward to unpick later. -->
+    <banObsoleteDependencyOverrides.skip>false</banObsoleteDependencyOverrides.skip>
+    <ban-junit4-imports.skip>false</ban-junit4-imports.skip>
+    <ban-deprecated-stapler.skip>false</ban-deprecated-stapler.skip>
+    <ban-commons-lang-2.skip>false</ban-commons-lang-2.skip>
   </properties>
 
   <repositories>
@@ -62,7 +86,7 @@
       <!-- SRS 14.2: plugin versions come from the BOM matching the chosen baseline. -->
       <dependency>
         <groupId>io.jenkins.tools.bom</groupId>
-        <artifactId>bom-2.541.x</artifactId>
+        <artifactId>bom-${jenkins.baseline}.x</artifactId>
         <version>6783.v88c6c30f4b_db_</version>
         <scope>import</scope>
         <type>pom</type>

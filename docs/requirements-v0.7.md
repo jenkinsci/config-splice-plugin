@@ -974,14 +974,15 @@ CI shall include:
 
 - Linux agent/controller configuration;
 - Windows agent/controller or Windows agent configuration;
-- Java 17 for the minimum supported baseline;
-- Java 21 compatibility where the selected Jenkins/test matrix permits it.
+- the JDK versions the Jenkins CI infrastructure accepts (currently 21 and 25).
+
+**Note on the build JDK.** ci.jenkins.io accepts only JDK 21 and 25, so the suite cannot be executed on a Java 17 runtime in CI. The plugin still *targets* Java 17 bytecode — the parent POM derives the release level from `jenkins.baseline`, and `javac --release 17` on JDK 21 produces Java 17 class files — so controllers on Java 17 remain supported. Compilation is pinned; execution is not. A `mvn clean verify` on JDK 17 shall be run locally before a release whenever a change touches reflection, class loading or the module system.
 
 The repository shall be prepared for Jenkins `buildPlugin` with Linux and Windows configurations from the beginning.
 
 **Windows is a required leg, not a courtesy one.** Gates 3 and 4 found two behaviors that differ between platforms and that would each have shipped as a defect had only one platform been exercised: `Files.isSymbolicLink()` misses Windows junctions (Section 13.1), and an open file handle blocks replacement on Windows but not on Linux (Section 13.2.1). A green Linux build carries little information about the file-handling half of this plugin. A future change to the CI matrix shall not drop the Windows configuration to save build time.
 
-The implemented matrix is Linux/Java 17, Windows/Java 17 and Linux/Java 21. Windows on Java 21 is deliberately omitted because the differences found so far are in operating-system file semantics rather than JDK version; it shall be added if a JDK-specific difference is ever observed.
+The implemented matrix is Linux/JDK 21, Windows/JDK 21 and Linux/JDK 25. Windows on JDK 25 is deliberately omitted because the differences found so far are in operating-system file semantics rather than JDK version; it shall be added if a JDK-specific difference is ever observed.
 
 Each decision-gate test shall write its platform evidence table to a build artifact as well as standard output, so the Windows and Linux legs can be compared directly after any change.
 
