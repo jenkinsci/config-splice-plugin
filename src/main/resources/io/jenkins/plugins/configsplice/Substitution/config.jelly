@@ -1,0 +1,22 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form" xmlns:c="/lib/credentials">
+
+  <f:entry title="${%Property path}" field="path">
+    <f:textbox/>
+  </f:entry>
+
+  <f:entry title="${%Literal value}" field="value">
+    <f:textbox/>
+  </f:entry>
+
+  <!-- c:select drives doFillCredentialsIdItems, which performs the permission checks required by
+       SRS section 12.2 before listing anything. -->
+  <f:entry title="${%Secret Text credential}" field="credentialsId">
+    <c:select/>
+  </f:entry>
+
+  <f:entry title="${%Value type}" field="type">
+    <f:select/>
+  </f:entry>
+
+</j:jelly>

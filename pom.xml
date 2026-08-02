@@ -102,6 +102,14 @@
       <artifactId>workflow-cps</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- StepConfigTester renders the real config.jelly and re-binds the submitted form, which is the
+         only way to prove the form actually binds rather than merely parsing. -->
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-step-api</artifactId>
+      <classifier>tests</classifier>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>org.jenkins-ci.plugins.workflow</groupId>
       <artifactId>workflow-basic-steps</artifactId>

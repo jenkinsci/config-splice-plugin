@@ -1,0 +1,13 @@
+<div>
+  Which path language applies to this group's substitutions.
+  <p>
+    Setting this explicitly is recommended. Path syntax and the permitted value types both depend on
+    the format, so with automatic detection those checks cannot run until the files have been found
+    on the agent.
+  </p>
+  <p>
+    Automatic detection uses the file extension (<code>.json</code>, <code>.xml</code>,
+    <code>.config</code>) and falls back to inspecting the first non-whitespace character. A group
+    that ends up containing both JSON and XML files is rejected.
+  </p>
+</div>

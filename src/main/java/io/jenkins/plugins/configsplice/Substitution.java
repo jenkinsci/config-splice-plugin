@@ -1,13 +1,25 @@
 package io.jenkins.plugins.configsplice;
 
+import com.cloudbees.plugins.credentials.CredentialsMatchers;
+import com.cloudbees.plugins.credentials.CredentialsProvider;
+import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
+import hudson.model.Item;
+import hudson.model.Queue;
+import hudson.model.queue.Tasks;
+import hudson.security.ACL;
 import hudson.util.FormValidation;
+import hudson.util.ListBoxModel;
 import io.jenkins.plugins.configsplice.engine.ErrorCode;
 import io.jenkins.plugins.configsplice.engine.SpliceException;
+import java.util.List;
+import jenkins.model.Jenkins;
+import org.jenkinsci.plugins.plaincredentials.StringCredentials;
+import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
@@ -52,7 +64,7 @@ public class Substitution extends AbstractDescribableImpl<Substitution> {
      */
     @DataBoundSetter
     public void setValue(@CheckForNull String value) {
-        this.value = value;
+        this.value = blankToNull(value);
     }
 
     @CheckForNull
@@ -62,7 +74,24 @@ public class Substitution extends AbstractDescribableImpl<Substitution> {
 
     @DataBoundSetter
     public void setCredentialsId(@CheckForNull String credentialsId) {
-        this.credentialsId = credentialsId;
+        this.credentialsId = blankToNull(credentialsId);
+    }
+
+    /**
+     * Normalises an untouched form field to {@code null}.
+     *
+     * <p>An HTML text input always submits a string, so a field the user never filled in arrives as
+     * {@code ""} rather than absent. Without this, the Snippet Generator emits noise such as
+     * {@code credentialsId: ''} for fields that were never set, because {@code DescribableModel} only
+     * omits values equal to the declared default.
+     *
+     * <p>Nothing is lost: {@link #validateAndParseType()} already treats an empty string as "no value
+     * supplied", so blank and null were never distinguishable. Substituting a deliberately empty
+     * string is therefore not expressible in Version 1.0 — see the note on this method's caller.
+     */
+    @CheckForNull
+    private static String blankToNull(@CheckForNull String raw) {
+        return (raw == null || raw.isBlank()) ? null : raw;
     }
 
     @NonNull
@@ -122,13 +151,98 @@ public class Substitution extends AbstractDescribableImpl<Substitution> {
         @NonNull
         @Override
         public String getDisplayName() {
-            return "Substitution";
+            return Messages.Substitution_DisplayName();
         }
 
         public FormValidation doCheckPath(@QueryParameter String value) {
-            return (value == null || value.isBlank())
-                    ? FormValidation.error("A property path is required.")
-                    : FormValidation.ok();
+            if (value == null || value.isBlank()) {
+                return FormValidation.error(Messages.Substitution_PathRequired());
+            }
+            return FormValidation.ok();
+        }
+
+        /**
+         * Warns when a literal looks like it might be a secret.
+         *
+         * <p>Advisory only. Literal step arguments are persisted and displayed by Pipeline metadata,
+         * so a secret placed here is disclosed regardless of what this check says (SRS section 12.3).
+         */
+        public FormValidation doCheckValue(@QueryParameter String value, @QueryParameter String credentialsId) {
+            boolean hasCredential = credentialsId != null && !credentialsId.isBlank();
+            if (value != null && !value.isEmpty() && hasCredential) {
+                return FormValidation.error(Messages.Substitution_BothSources());
+            }
+            return FormValidation.ok();
+        }
+
+        public ListBoxModel doFillTypeItems() {
+            ListBoxModel items = new ListBoxModel();
+            items.add(Messages.Substitution_Type_auto(), "auto");
+            items.add(Messages.Substitution_Type_string(), "string");
+            items.add(Messages.Substitution_Type_number(), "number");
+            items.add(Messages.Substitution_Type_boolean(), "boolean");
+            items.add(Messages.Substitution_Type_null(), "null");
+            return items;
+        }
+
+        /**
+         * Populates the Secret Text credential picker (SRS section 12.2).
+         *
+         * <p>The permission checks are the point of this method, not the convenience. A caller who
+         * may not use credentials in this context gets back only the value already configured, so the
+         * dropdown cannot be used to enumerate credential IDs the caller is not entitled to see.
+         */
+        public ListBoxModel doFillCredentialsIdItems(
+                @AncestorInPath Item item, @QueryParameter String credentialsId) {
+
+            StandardListBoxModel model = new StandardListBoxModel();
+            if (item == null) {
+                if (!Jenkins.get().hasPermission(Jenkins.ADMINISTER)) {
+                    return model.includeCurrentValue(credentialsId);
+                }
+            } else if (!item.hasPermission(Item.EXTENDED_READ)
+                    && !item.hasPermission(CredentialsProvider.USE_ITEM)) {
+                return model.includeCurrentValue(credentialsId);
+            }
+            return model.includeEmptyValue()
+                    .includeMatchingAs(
+                            item instanceof Queue.Task task
+                                    ? Tasks.getAuthenticationOf2(task)
+                                    : ACL.SYSTEM2,
+                            item,
+                            StringCredentials.class,
+                            List.of(),
+                            CredentialsMatchers.always())
+                    .includeCurrentValue(credentialsId);
+        }
+
+        /** Confirms the selected credential is resolvable, without revealing anything if it is not. */
+        public FormValidation doCheckCredentialsId(
+                @AncestorInPath Item item, @QueryParameter String value) {
+
+            if (value == null || value.isBlank()) {
+                return FormValidation.ok();
+            }
+            if (item == null) {
+                if (!Jenkins.get().hasPermission(Jenkins.ADMINISTER)) {
+                    return FormValidation.ok();
+                }
+            } else if (!item.hasPermission(Item.EXTENDED_READ)
+                    && !item.hasPermission(CredentialsProvider.USE_ITEM)) {
+                return FormValidation.ok();
+            }
+            boolean resolvable = !CredentialsProvider.listCredentialsInItem(
+                            StringCredentials.class,
+                            item,
+                            item instanceof Queue.Task task
+                                    ? Tasks.getAuthenticationOf2(task)
+                                    : ACL.SYSTEM2,
+                            List.of(),
+                            CredentialsMatchers.withId(value))
+                    .isEmpty();
+            return resolvable
+                    ? FormValidation.ok()
+                    : FormValidation.error(Messages.Substitution_CredentialNotFound());
         }
     }
 }

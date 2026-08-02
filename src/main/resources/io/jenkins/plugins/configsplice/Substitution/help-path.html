@@ -1,0 +1,21 @@
+<div>
+  The property to replace. The syntax depends on the group's format.
+  <p><b>JSON</b> - dotted navigation, with quoting for keys that contain dots:</p>
+  <ul>
+    <li><code>Logging.LogLevel.Default</code> - three nested objects</li>
+    <li><code>Serilog.'MinimumLevel.Default'</code> - a literal key containing dots</li>
+    <li><code>Services[0].Url</code> - zero-based array index</li>
+  </ul>
+  <p><b>XML</b> - the two .NET configuration collections only:</p>
+  <ul>
+    <li><code>appSettings.ApiUrl</code> - the <code>value</code> attribute of the matching entry</li>
+    <li><code>appSettings.BankApi:Key</code> - colons and dots are literal here, never navigation</li>
+    <li><code>connectionStrings.Default</code> - the connection string</li>
+    <li><code>connectionStrings.Default.@providerName</code> - the provider name instead</li>
+  </ul>
+  <p>
+    Matching is exact and case-sensitive. Only entries directly inside the top-level
+    <code>appSettings</code> or <code>connectionStrings</code> element are considered; entries inside
+    <code>&lt;location&gt;</code> and external files referenced by <code>file=</code> are not.
+  </p>
+</div>

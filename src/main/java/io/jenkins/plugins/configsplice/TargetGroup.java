@@ -41,6 +41,21 @@ public class TargetGroup extends AbstractDescribableImpl<TargetGroup> {
         return List.copyOf(files);
     }
 
+    /**
+     * The file patterns as newline-separated text, for the form view only.
+     *
+     * <p>Not a configuration property: {@code DescribableModel} derives properties from the
+     * {@code @DataBoundConstructor} parameters and {@code @DataBoundSetter} methods, so this getter is
+     * invisible to Pipeline binding and to the Snippet Generator. It exists because Jenkins form
+     * binding has no workable idiom for a {@code List<String>}, so the form uses a textarea and
+     * {@link DescriptorImpl#newInstance} converts it back. The Pipeline API stays
+     * {@code files: ['a', 'b']}.
+     */
+    @NonNull
+    public String getFilesText() {
+        return String.join("\n", files);
+    }
+
     @NonNull
     public List<Substitution> getSubstitutions() {
         return List.copyOf(substitutions);
@@ -92,7 +107,39 @@ public class TargetGroup extends AbstractDescribableImpl<TargetGroup> {
         @NonNull
         @Override
         public String getDisplayName() {
-            return "Target group";
+            return Messages.TargetGroup_DisplayName();
+        }
+
+        /**
+         * Converts the textarea's newline-separated patterns into the {@code List<String>} the
+         * constructor expects.
+         *
+         * <p>Only the form submits {@code files} as a single string; a Pipeline script already
+         * supplies a list, and that case passes through untouched.
+         */
+        @Override
+        public TargetGroup newInstance(
+                org.kohsuke.stapler.StaplerRequest2 req, net.sf.json.JSONObject formData)
+                throws FormException {
+
+            Object submitted = formData.opt("files");
+            if (submitted instanceof String text) {
+                net.sf.json.JSONArray patterns = new net.sf.json.JSONArray();
+                text.lines()
+                        .map(String::trim)
+                        .filter(line -> !line.isEmpty())
+                        .forEach(patterns::add);
+                formData.put("files", patterns);
+            }
+            return (TargetGroup) super.newInstance(req, formData);
+        }
+
+        public hudson.util.ListBoxModel doFillFormatItems() {
+            hudson.util.ListBoxModel items = new hudson.util.ListBoxModel();
+            items.add(Messages.TargetGroup_Format_auto(), "auto");
+            items.add(Messages.TargetGroup_Format_json(), "json");
+            items.add(Messages.TargetGroup_Format_xml(), "xml");
+            return items;
         }
     }
 }

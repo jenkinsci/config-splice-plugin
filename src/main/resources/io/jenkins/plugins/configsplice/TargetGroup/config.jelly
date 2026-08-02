@@ -1,0 +1,20 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
+
+  <!-- One pattern per line. Jenkins form binding has no workable idiom for a List<String>, so the
+       form submits a single string and TargetGroup.DescriptorImpl.newInstance splits it back into a
+       list. The Pipeline API is unaffected and still takes files: ['a', 'b'].
+       ConfigRoundTripTest proves this binds rather than merely rendering. -->
+  <f:entry title="${%File patterns}" field="files">
+    <f:textarea value="${instance.filesText}"/>
+  </f:entry>
+
+  <f:entry title="${%File format}" field="format">
+    <f:select/>
+  </f:entry>
+
+  <f:entry title="${%Substitutions}">
+    <f:repeatableProperty field="substitutions" minimum="1" add="${%Add substitution}"/>
+  </f:entry>
+
+</j:jelly>

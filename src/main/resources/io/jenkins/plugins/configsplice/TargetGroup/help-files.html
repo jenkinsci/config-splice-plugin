@@ -1,0 +1,14 @@
+<div>
+  Ant-style patterns, relative to the workspace. Absolute paths and patterns that traverse outside
+  the workspace are rejected.
+  <p>Examples:</p>
+  <ul>
+    <li><code>**/web.config</code> - every <code>web.config</code>, including one at the workspace root</li>
+    <li><code>src/**/appsettings.json</code> - only under <code>src</code></li>
+    <li><code>src/*.json</code> - directly in <code>src</code>, not in subdirectories</li>
+  </ul>
+  <p>
+    Patterns in one group form a union and duplicate matches are collapsed, so a file matched by two
+    patterns in the same group is still processed once.
+  </p>
+</div>

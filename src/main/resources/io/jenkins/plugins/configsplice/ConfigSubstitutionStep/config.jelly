@@ -1,0 +1,26 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
+
+  <f:entry title="${%Target groups}">
+    <f:repeatableProperty field="targets" minimum="1" add="${%Add target group}"/>
+  </f:entry>
+
+  <f:entry title="${%Dry run}" field="dryRun">
+    <f:checkbox/>
+  </f:entry>
+
+  <f:advanced>
+    <f:entry title="${%When a target group matches no files}" field="noMatchBehavior">
+      <f:select/>
+    </f:entry>
+
+    <f:entry title="${%When a property path is not found}" field="missingPathBehavior">
+      <f:select/>
+    </f:entry>
+
+    <f:entry title="${%Acknowledge credential file lifecycle}" field="acknowledgeSecretLifecycle">
+      <f:checkbox/>
+    </f:entry>
+  </f:advanced>
+
+</j:jelly>

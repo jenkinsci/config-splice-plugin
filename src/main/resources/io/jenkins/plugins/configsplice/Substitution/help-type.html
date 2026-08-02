@@ -1,0 +1,18 @@
+<div>
+  How the replacement is written into the file.
+  <p>
+    <b>Automatic</b> matches the type already present: a JSON string stays a string, a number stays a
+    number, a boolean stays a boolean. This is almost always what you want, and it prevents a value
+    silently changing a property's meaning.
+  </p>
+  <p>
+    Choose an explicit type to change one deliberately, for example writing <code>8443</code> as a
+    string. A value that currently holds <code>null</code> has no type to infer, so it requires an
+    explicit choice.
+  </p>
+  <p>
+    <b>XML</b> targets are always text, so only Automatic and String apply. <b>Credentials</b> are
+    always written as strings; to point one at a non-string JSON value you must select String
+    explicitly, as an acknowledgement that the property's type is changing.
+  </p>
+</div>

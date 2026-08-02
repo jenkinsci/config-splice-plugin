@@ -247,12 +247,28 @@ public class ConfigSubstitutionStep extends Step {
         @NonNull
         @Override
         public String getDisplayName() {
-            return "Substitute values in JSON and .NET XML configuration files";
+            return Messages.ConfigSubstitutionStep_DisplayName();
         }
 
         @Override
         public Set<? extends Class<?>> getRequiredContext() {
             return Set.of(Run.class, FilePath.class, TaskListener.class);
+        }
+
+        public hudson.util.ListBoxModel doFillNoMatchBehaviorItems() {
+            return behaviorItems();
+        }
+
+        public hudson.util.ListBoxModel doFillMissingPathBehaviorItems() {
+            return behaviorItems();
+        }
+
+        private static hudson.util.ListBoxModel behaviorItems() {
+            hudson.util.ListBoxModel items = new hudson.util.ListBoxModel();
+            items.add(Messages.Behavior_fail(), "fail");
+            items.add(Messages.Behavior_warn(), "warn");
+            items.add(Messages.Behavior_ignore(), "ignore");
+            return items;
         }
     }
 }

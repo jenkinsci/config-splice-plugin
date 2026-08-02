@@ -3,9 +3,9 @@
 A Jenkins Pipeline step that replaces **existing scalar values** in JSON and .NET XML configuration
 files — `appsettings.json` and `web.config` — preserving every byte it was not asked to change.
 
-> **Status: alpha.** The engine, the Pipeline step and all six decision gates are complete. The
-> step runs end to end in a sandboxed Pipeline. Not yet done: form UI (`config.jelly`), help text,
-> Freestyle support, and the Linux CI leg. See [Current state](#current-state).
+> **Status: alpha.** The engine, the Pipeline step and all six decision gates are complete and
+> verified on Windows and Linux. The step runs end to end in a sandboxed Pipeline. Not yet done:
+> form UI (`config.jelly`), help text, and Freestyle support. See [Current state](#current-state).
 
 ## What it does
 
@@ -67,12 +67,12 @@ should be descriptive and predictable even when the product name is more distinc
 | Decision gate 4 — atomic replacement | **Passed on Windows and Linux**, ADR-002 |
 | Decision gate 5 — sandbox-safe result map | **Passed**, ADR-005 |
 | Decision gate 6 — pre-commit test seam | **Passed**, ADR-005 |
+| Form UI — `config.jelly`, help text, localised messages | Implemented, round-trip tested |
 | CI — `Jenkinsfile` for ci.jenkins.io | Configured, not yet run |
-| Freestyle support, `config.jelly` form views, help text | Not started |
+| Freestyle support | Deferred to V1.1 by SRS §21.2 |
 
-111 tests pass on JDK 17, `mvn verify` is clean (SpotBugs included) and the HPI builds. **All six
-decision gates are closed**, verified on Windows 10 and AlmaLinux 9.8. One test self-skips: the
-parent POM's `*.properties` check, which stands down until localised messages exist. Two tests self-skip: the Jenkins parent POM injects Jelly and properties
+`mvn clean verify` is green on Windows 10 and AlmaLinux 9 (JDK 17): **119 tests, nothing skipped**,
+SpotBugs clean, HPI packaged. **All six decision gates are closed on both platforms.** Two tests self-skip: the Jenkins parent POM injects Jelly and properties
 checks that stand down until view files exist.
 
 Gate evidence is written to `target/gate-evidence/` on every build, so the Windows and Linux CI legs
@@ -144,6 +144,9 @@ Each gate test prints a platform evidence table to stdout, captured in the archi
 of every leg, which is the intended way to compare Windows against Linux after a change.
 
 ## Documentation
+
+- [`CHANGELOG.md`](CHANGELOG.md) — what the release contains, the security notes, and the known
+  limitations. Worth reading before installing rather than after.
 
 - `../jenkins-config-substitution-plugin-requirements-v0.6.md` — the requirements specification
 - [`docs/adr/ADR-001`](docs/adr/ADR-001-source-preserving-range-location.md) — why locate-then-splice,
