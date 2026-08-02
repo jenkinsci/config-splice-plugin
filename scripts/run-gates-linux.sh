@@ -16,7 +16,31 @@ MAVEN_VERSION="3.9.16"
 MAVEN_HOME="${TOOLS_DIR}/apache-maven-${MAVEN_VERSION}"
 
 log()  { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
+warn() { printf '\n\033[33mWARNING: %s\033[0m\n' "$*" >&2; }
 fail() { printf '\n\033[31mERROR: %s\033[0m\n' "$*" >&2; exit 1; }
+
+# ---------------------------------------------------------------------------
+# Running as root is allowed but warned about.
+#
+# Maven as root leaves a root-owned target/ and /root/.m2, which breaks later non-root builds in the
+# same checkout. On a dedicated or disposable test box that costs nothing, so this warns rather than
+# refuses; blocking a workflow that is perfectly reasonable there would be obstructive.
+# Set CONFIG_SPLICE_ALLOW_ROOT=1 to silence.
+# ---------------------------------------------------------------------------
+if [[ "${EUID}" -eq 0 && "${CONFIG_SPLICE_ALLOW_ROOT:-0}" != "1" ]]; then
+  warn "Running as root. target/ and /root/.m2 will be root-owned, which will break later
+         non-root builds in this checkout. Fine on a dedicated test box; on a shared machine
+         prefer a normal user. Set CONFIG_SPLICE_ALLOW_ROOT=1 to silence this."
+fi
+
+# ---------------------------------------------------------------------------
+# Jansi needs an executable temp directory for its native library. Many hardened hosts mount /tmp
+# with noexec, which produces an alarming UnsatisfiedLinkError that has nothing to do with the build
+# and only affects log colouring. Point it somewhere writable and executable instead.
+# ---------------------------------------------------------------------------
+JANSI_TMP="${TOOLS_DIR}/jansi-tmp"
+mkdir -p "${JANSI_TMP}"
+export MAVEN_OPTS="${MAVEN_OPTS:-} -Djansi.tmpdir=${JANSI_TMP}"
 
 # ---------------------------------------------------------------------------
 # Java 17

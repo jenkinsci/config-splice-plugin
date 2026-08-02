@@ -81,18 +81,45 @@ held throughout. It narrows a race; it does not pretend to eliminate it.
 - **Interrupts are not swallowed.** The retry loop rethrows on `InterruptedException` so a Pipeline
   abort is not absorbed into a backoff.
 
-## Not yet verified
+## Linux verification
 
-**Linux/POSIX behaviour is unverified.** No Linux host was available. The POSIX permission-preservation
-path is implemented and its probe self-reports "not applicable" on Windows rather than passing
-vacuously. It must be confirmed on the Linux CI leg (SRS section 17.2) before gate 4 is closed for
-both platforms. Expected differences to check there:
+Measured on AlmaLinux 9.8 (kernel 5.14.0-687.15.1.el9_8) with JDK 17.0.20. Every prediction held.
 
-- `ATOMIC_MOVE` should succeed, and an open handle should **not** block the replacement — POSIX
-  `rename()` over an open file succeeds, leaving readers on the old inode. If so, the retry is inert
-  on Linux and costs nothing.
-- Mode `rw-r-----` must survive the move.
-- Owner and group are not preserved without privileges; confirm and document.
+```
+=== Gate 4 evidence: atomic replacement ===
+  platform: Linux 5.14.0-687.15.1.el9_8.x86_64 / JDK 17.0.20
+  temporary file location                    sibling of the target, as required
+  target open via FileInputStream            replacement SUCCEEDED despite the open handle
+  target open via FileChannel (READ)         replacement SUCCEEDED despite the open handle
+  same-directory move                        ATOMIC_MOVE supported and used
+  permissions explicitly transferred         yes (POSIX permissions copied to the replacement)
+  read-only target                           refused with WRITE_FAILED; original intact
+  POSIX permission preservation              verified: mode rw-r----- survived the move
+  briefly-held handle (released after 60ms)  recovered once the handle closed
+```
+
+**The retry is inert on Linux, as predicted.** POSIX `rename()` over an open file succeeds, leaving
+existing readers on the old inode, so the Windows-driven retry never fires and costs nothing.
+
+**The read-only row validates the cross-platform writability check.** SRS section 13.2 did not ask
+for `Files.isWritable` on POSIX; it was added because a POSIX `rename()` needs write permission only
+on the *directory*, so a `0444` config file would otherwise have been silently replaced on Linux while
+the identical build failed on Windows. The Linux run confirms both platforms now refuse it.
+
+### A test bug this run exposed
+
+The first Linux run failed one assertion. `Gate4EvidenceTest` asserted that a permanently-held handle
+**must** cause a failure — a Windows-specific outcome hard-coded into a probe that was supposed to be
+measuring platform behaviour. The engine was correct; the test was wrong, and its `permanently-held
+handle` row is consequently absent from the evidence above.
+
+Fixed: the probe now records whichever outcome occurs and asserts only what must hold everywhere —
+the call is bounded, nothing is left damaged, and a reported success really replaced the content.
+Windows still reports `replacement BLOCKED and failed cleanly, bounded at 530ms`. Re-running on Linux
+will add the row, expected to read `replacement SUCCEEDED`.
+
+The lesson generalises: in a cross-platform gate, assert invariants and *record* behaviour. Every
+other probe in this suite already did, which is why only this one broke.
 
 ## Proposed SRS amendment
 

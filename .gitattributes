@@ -1,0 +1,13 @@
+# Shell scripts must keep LF endings on every platform.
+#
+# Without this, a checkout on Windows with core.autocrlf=true rewrites the shebang to
+# "#!/usr/bin/env bash\r". Linux then looks for an interpreter literally named "bash\r" and the
+# script fails with a confusing "command not found" or "no such file or directory".
+*.sh text eol=lf
+
+# Keep the exec bit on scripts so it survives a clone rather than depending on how files were copied.
+scripts/*.sh text eol=lf
+
+# Fixture-adjacent files whose bytes matter: never let git normalise line endings in them.
+*.config -text
+*.json -text

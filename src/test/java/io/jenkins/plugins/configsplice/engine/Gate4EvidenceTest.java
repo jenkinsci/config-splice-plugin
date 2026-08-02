@@ -229,19 +229,36 @@ class Gate4EvidenceTest {
         }
         record("briefly-held handle (released after 60ms)", transientFinding);
 
-        // Permanent case: the retry budget must be bounded, not a hang.
+        // Permanent case. Whether this blocks is platform behaviour, not a requirement: Windows
+        // refuses a replacement while any handle is open, while POSIX rename() succeeds and leaves
+        // existing readers on the old inode. Asserting either outcome would hard-code one platform.
+        // What must hold everywhere is that the call is bounded and leaves nothing damaged.
         Path heldTarget = seed(workspace, "held.config");
         long startedAt = System.nanoTime();
+        String heldFinding;
         try (InputStream held = new FileInputStream(heldTarget.toFile())) {
-            assertTrue(held.read() >= 0);
-            assertThrows(SpliceException.class, () -> AtomicFileWriter.replace(heldTarget, REPLACEMENT));
+            assertTrue(held.read() >= 0, "the handle must really be open");
+            try {
+                AtomicFileWriter.replace(heldTarget, REPLACEMENT);
+                assertArrayEquals(
+                        REPLACEMENT,
+                        Files.readAllBytes(heldTarget),
+                        "a reported success must really have replaced the content");
+                heldFinding = "replacement SUCCEEDED (rename over an open file is permitted here)";
+            } catch (SpliceException e) {
+                assertEquals(ErrorCode.WRITE_FAILED, e.code());
+                assertArrayEquals(
+                        ORIGINAL, Files.readAllBytes(heldTarget), "original must survive a refusal");
+                heldFinding = "replacement BLOCKED and failed cleanly";
+            }
         }
         long elapsedMillis = (System.nanoTime() - startedAt) / 1_000_000;
 
-        assertTrue(elapsedMillis < 5_000, "a permanently held target must fail promptly, took " + elapsedMillis + "ms");
-        assertArrayEquals(ORIGINAL, Files.readAllBytes(heldTarget), "original must survive");
+        assertTrue(
+                elapsedMillis < 5_000,
+                "the retry budget must stay bounded whatever the outcome, took " + elapsedMillis + "ms");
         assertEquals(List.of(), strayTempFiles(workspace), "no temporary file may survive");
-        record("permanently-held handle", "failed after " + elapsedMillis + "ms (bounded, no hang)");
+        record("permanently-held handle", heldFinding + ", bounded at " + elapsedMillis + "ms");
     }
 
     @Test

@@ -29,6 +29,19 @@ public final class SplicePlan {
             Objects.requireNonNull(replacement, "replacement");
             Objects.requireNonNull(label, "label");
         }
+
+        /**
+         * Masks the replacement text.
+         *
+         * <p>A record's generated {@code toString()} prints every component, so the default would
+         * put a resolved credential into any log statement, assertion message or debugger label that
+         * touched an edit. Overriding it makes that leak impossible rather than merely forbidden
+         * (ADR-003).
+         */
+        @Override
+        public String toString() {
+            return "Edit[" + label + " @" + range.start() + ".." + range.end() + ", replacement hidden]";
+        }
     }
 
     private final List<Edit> edits;

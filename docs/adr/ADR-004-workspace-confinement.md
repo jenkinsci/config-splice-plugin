@@ -94,13 +94,32 @@ Suggested addition to section 13.1:
 > Links appearing as intermediate path components are permitted provided the fully resolved path
 > remains inside the workspace.
 
-## Not yet verified
+## Linux verification
 
-Linux behaviour is unverified — no Linux host was available. The probes are platform-neutral and will
-run unchanged on AlmaLinux; `createJunction` self-reports "not applicable" off Windows rather than
-passing vacuously. Expected there: symlink probes become conclusive, junction probes report not
-applicable, and the real-path logic behaves identically. Confirm on the Linux CI leg
-(SRS section 17.2).
+Measured on AlmaLinux 9.8 with JDK 17.0.20. All seven probes passed; the confinement logic behaves
+identically on both platforms.
+
+```
+=== Gate 3 evidence: workspace confinement against links ===
+  platform: Linux 5.14.0-687.15.1.el9_8.x86_64 / JDK 17.0.20
+  ordinary relative file                     accepted
+  absolute path                              refused with WORKSPACE_ESCAPE
+  lexical .. traversal                       refused with WORKSPACE_ESCAPE
+  directory junction                         not applicable on this platform
+  internal junction                          not applicable
+  symbolic link escaping the workspace       refused with WORKSPACE_ESCAPE
+  symlinked target file (points inside)      refused - rename would replace the link itself
+  directory as target                        refused with WORKSPACE_ESCAPE
+  missing file                               refused with FILE_NOT_FOUND (distinct from escape)
+```
+
+The junction probes correctly report "not applicable" rather than passing vacuously, and the symlink
+probes — which needed elevation on Windows and could have come back inconclusive there — are
+conclusive on both platforms. Deciding confinement on `toRealPath()` rather than on file attributes
+means there is no platform-specific branch in `WorkspaceGuard` at all, which is why nothing needed
+changing for Linux.
+
+Gate 3 is now closed on both supported platforms.
 
 ## Verification
 
