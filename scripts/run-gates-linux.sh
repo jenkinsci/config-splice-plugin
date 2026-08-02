@@ -100,10 +100,21 @@ fi
 # The first run downloads the Jenkins parent POM, the plugin BOM and the test harness (including a
 # Jenkins war for the gate 2 agent test), so it needs network access and takes a few minutes.
 # ---------------------------------------------------------------------------
-log "Running the test suite"
+log "Running the build"
 cd "${REPO_ROOT}"
+
+# 'clean' is deliberate. Copying sources between machines often preserves timestamps, which makes
+# Maven decide "nothing to compile" and silently run stale classes from a previous sync - a green
+# build that reflects code you no longer have. A full rebuild costs a minute and removes the doubt.
+#
+# 'verify' rather than 'test' so this matches what CI actually runs: SpotBugs, the parent's static
+# checks and HPI packaging all live in verify, and every one of them has caught something that
+# 'mvn test' happily ignored.
+GOAL="${CONFIG_SPLICE_MAVEN_GOAL:-clean verify}"
+echo "Running: mvn ${GOAL}"
 set +e
-"${MVN}" -B -ntp test
+# shellcheck disable=SC2086
+"${MVN}" -B -ntp ${GOAL}
 build_status=$?
 set -e
 

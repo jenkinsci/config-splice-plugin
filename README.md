@@ -67,10 +67,12 @@ should be descriptive and predictable even when the product name is more distinc
 | Decision gate 4 — atomic replacement | **Passed on Windows and Linux**, ADR-002 |
 | Decision gate 5 — sandbox-safe result map | **Passed**, ADR-005 |
 | Decision gate 6 — pre-commit test seam | **Passed**, ADR-005 |
-| Freestyle support, `config.jelly` views, help text | Not started |
+| CI — `Jenkinsfile` for ci.jenkins.io | Configured, not yet run |
+| Freestyle support, `config.jelly` form views, help text | Not started |
 
-111 tests pass on JDK 17. **All six decision gates are closed**, verified on Windows 10 and
-AlmaLinux 9.8. Two tests self-skip: the Jenkins parent POM injects Jelly and properties
+111 tests pass on JDK 17, `mvn verify` is clean (SpotBugs included) and the HPI builds. **All six
+decision gates are closed**, verified on Windows 10 and AlmaLinux 9.8. One test self-skips: the
+parent POM's `*.properties` check, which stands down until localised messages exist. Two tests self-skip: the Jenkins parent POM injects Jelly and properties
 checks that stand down until view files exist.
 
 Gate evidence is written to `target/gate-evidence/` on every build, so the Windows and Linux CI legs
@@ -96,10 +98,13 @@ io.jenkins.plugins.configsplice
 Requires **JDK 17** and Maven 3.9.6+.
 
 ```bash
-mvn test          # engine tests, seconds
-mvn verify        # adds SpotBugs and the plugin parent's checks
+mvn test          # engine tests in seconds; Jenkins-harness tests take a few minutes
+mvn verify        # adds SpotBugs, the parent's static checks, and builds the HPI
 mvn hpi:run       # run a Jenkins instance with the plugin loaded
 ```
+
+`mvn verify` is what CI runs, so run it before pushing — `mvn test` alone will not catch a SpotBugs
+finding or an HPI packaging problem.
 
 The baseline is Jenkins **2.541.3** on **Java 17** — the newest LTS line that still supports Java 17,
 since 2.555.1 and later require Java 21. See SRS section 14.1.
@@ -119,6 +124,24 @@ reports a misleading `command not found`.
 Checks for JDK 17, fetches Maven 3.9.16 into `.tools/` if the system Maven is older than 3.9.6
 (AlmaLinux 9's AppStream ships 3.8.x, which fails with `Unknown packaging: hpi`), runs the suite, and
 prints the gate evidence with notes on what should differ from the Windows results.
+
+## Continuous integration
+
+`Jenkinsfile` builds three configurations on ci.jenkins.io:
+
+| Platform | JDK | Why |
+|---|---|---|
+| linux | 17 | the minimum supported baseline |
+| windows | 17 | the same baseline where file semantics differ |
+| linux | 21 | forward compatibility (SRS section 17.2) |
+
+**Windows is a required leg, not a nice-to-have.** Gates 3 and 4 found behaviour that genuinely
+differs between platforms — `Files.isSymbolicLink()` misses Windows junctions, and an open file
+handle blocks replacement on Windows but not on Linux. A green Linux build says very little about the
+file-handling half of this plugin.
+
+Each gate test prints a platform evidence table to stdout, captured in the archived surefire output
+of every leg, which is the intended way to compare Windows against Linux after a change.
 
 ## Documentation
 

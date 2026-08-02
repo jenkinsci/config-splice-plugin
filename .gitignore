@@ -3,6 +3,9 @@ work/
 *.hpi
 *.jpi
 
+# Toolchain fetched by scripts/run-gates-linux.sh when the system Maven is too old.
+.tools/
+
 # IDE
 .idea/
 *.iml

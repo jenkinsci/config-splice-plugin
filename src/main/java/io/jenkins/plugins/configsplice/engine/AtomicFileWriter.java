@@ -55,11 +55,17 @@ public final class AtomicFileWriter {
         if (directory == null) {
             throw new SpliceException(ErrorCode.WRITE_FAILED, "target has no parent directory");
         }
+        // getFileName() is null for a path with no name element, such as a filesystem root. Reaching
+        // here with one would mean confinement let a directory through, so fail rather than assume.
+        Path fileName = target.getFileName();
+        if (fileName == null) {
+            throw new SpliceException(ErrorCode.WRITE_FAILED, "target has no file name");
+        }
         requireWritableRegularFile(target);
 
         Path temp = null;
         try {
-            temp = createRestrictedSibling(directory, target.getFileName().toString());
+            temp = createRestrictedSibling(directory, fileName.toString());
             writeAndSync(temp, content);
             boolean permissionsPreserved = copyPermissions(target, temp);
             boolean atomic = move(temp, target);

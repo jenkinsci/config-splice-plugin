@@ -1,0 +1,11 @@
+<?jelly escape-by-default='true'?>
+<div>
+  Replaces <strong>existing</strong> scalar values in JSON and .NET XML configuration files
+  (<code>appsettings.json</code> and <code>web.config</code>) from a Pipeline step, preserving every
+  byte it was not asked to change: comments, indentation, key order, attribute order, quote style,
+  BOM state and line endings all survive.
+  <p>
+    Values may be literals or Jenkins Secret Text credentials. Nothing is ever created: a property
+    path that does not resolve is a missing path, never a new field.
+  </p>
+</div>

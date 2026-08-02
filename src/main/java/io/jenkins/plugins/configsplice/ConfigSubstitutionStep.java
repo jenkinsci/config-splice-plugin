@@ -202,7 +202,16 @@ public class ConfigSubstitutionStep extends Step {
             }
             String credentialsId = substitution.getCredentialsId();
             if (credentialsId == null || credentialsId.isBlank()) {
-                return ResolvedValue.literal(substitution.getValue());
+                String literal = substitution.getValue();
+                if (literal == null) {
+                    // validateAndParseType() should have caught this already; enforcing it here too
+                    // keeps the invariant local to the call that depends on it rather than relying on
+                    // a check three frames away staying correct.
+                    throw new SpliceException(
+                            ErrorCode.TYPE_INVALID,
+                            "path '" + substitution.getPath() + "' has neither value nor credentialsId");
+                }
+                return ResolvedValue.literal(literal);
             }
             // findCredentialById resolves against the run's context, so folder-scoped credentials work,
             // and it registers the usage with the credentials API for us.

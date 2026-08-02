@@ -83,11 +83,11 @@ held throughout. It narrows a race; it does not pretend to eliminate it.
 
 ## Linux verification
 
-Measured on AlmaLinux 9.8 (kernel 5.14.0-687.15.1.el9_8) with JDK 17.0.20. Every prediction held.
+Measured on AlmaLinux 9 with JDK 17.0.20. Every prediction held.
 
 ```
 === Gate 4 evidence: atomic replacement ===
-  platform: Linux 5.14.0-687.15.1.el9_8.x86_64 / JDK 17.0.20
+  platform: Linux 5.14.0 (el9) / JDK 17.0.20
   temporary file location                    sibling of the target, as required
   target open via FileInputStream            replacement SUCCEEDED despite the open handle
   target open via FileChannel (READ)         replacement SUCCEEDED despite the open handle
@@ -96,10 +96,15 @@ Measured on AlmaLinux 9.8 (kernel 5.14.0-687.15.1.el9_8) with JDK 17.0.20. Every
   read-only target                           refused with WRITE_FAILED; original intact
   POSIX permission preservation              verified: mode rw-r----- survived the move
   briefly-held handle (released after 60ms)  recovered once the handle closed
+  permanently-held handle                    replacement SUCCEEDED (rename over an open file is
+                                             permitted here), bounded at 14ms
 ```
 
-**The retry is inert on Linux, as predicted.** POSIX `rename()` over an open file succeeds, leaving
-existing readers on the old inode, so the Windows-driven retry never fires and costs nothing.
+**The retry is inert on Linux, and the timing proves it.** POSIX `rename()` over an open file
+succeeds, leaving existing readers on the old inode, so the retry never fires. The permanently-held
+probe completes in **14 ms on Linux against 530 ms on Windows** — the difference is exactly the five
+backoff cycles not happening. That is a measurement of the retry's absence, not an inference from
+how `rename()` is supposed to behave.
 
 **The read-only row validates the cross-platform writability check.** SRS section 13.2 did not ask
 for `Files.isWritable` on POSIX; it was added because a POSIX `rename()` needs write permission only
@@ -115,11 +120,12 @@ handle` row is consequently absent from the evidence above.
 
 Fixed: the probe now records whichever outcome occurs and asserts only what must hold everywhere —
 the call is bounded, nothing is left damaged, and a reported success really replaced the content.
-Windows still reports `replacement BLOCKED and failed cleanly, bounded at 530ms`. Re-running on Linux
-will add the row, expected to read `replacement SUCCEEDED`.
+Windows reports `replacement BLOCKED and failed cleanly, bounded at 530ms`; Linux reports
+`replacement SUCCEEDED ... bounded at 14ms`. Both pass the same assertions.
 
 The lesson generalises: in a cross-platform gate, assert invariants and *record* behaviour. Every
-other probe in this suite already did, which is why only this one broke.
+other probe in this suite already did, which is why only this one broke — and the corrected version
+turned out to yield the sharpest evidence in the whole gate.
 
 ## Proposed SRS amendment
 

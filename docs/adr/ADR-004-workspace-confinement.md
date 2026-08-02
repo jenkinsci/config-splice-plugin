@@ -96,12 +96,12 @@ Suggested addition to section 13.1:
 
 ## Linux verification
 
-Measured on AlmaLinux 9.8 with JDK 17.0.20. All seven probes passed; the confinement logic behaves
+Measured on AlmaLinux 9 with JDK 17.0.20. All seven probes passed; the confinement logic behaves
 identically on both platforms.
 
 ```
 === Gate 3 evidence: workspace confinement against links ===
-  platform: Linux 5.14.0-687.15.1.el9_8.x86_64 / JDK 17.0.20
+  platform: Linux 5.14.0 (el9) / JDK 17.0.20
   ordinary relative file                     accepted
   absolute path                              refused with WORKSPACE_ESCAPE
   lexical .. traversal                       refused with WORKSPACE_ESCAPE

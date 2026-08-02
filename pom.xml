@@ -17,7 +17,8 @@
   <packaging>hpi</packaging>
 
   <name>Config Splice</name>
-  <description>Replaces existing scalar values in JSON and .NET XML configuration files from Jenkins Pipeline, preserving every unaffected source byte.</description>
+  <!-- No <description> here on purpose: the maven-hpi-plugin requires the plugin description to live
+       in src/main/resources/index.jelly and refuses to package if both are present. -->
   <url>https://github.com/jenkinsci/config-splice-plugin</url>
 
   <licenses>
