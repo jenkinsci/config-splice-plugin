@@ -869,9 +869,10 @@ The baseline shall be rechecked before Version 1.0 is released, because Jenkins 
   - `workflow-step-api`;
   - `credentials`;
   - `plain-credentials`;
-  - `jackson3-api` (`io.jenkins.plugins`; note the groupId differs from the former `jackson2-api`);
+  - the Jackson API plugin `io.jenkins.plugins:jackson3-api` (note the groupId differs from the former `org.jenkins-ci.plugins:jackson2-api`);
   - supporting test dependencies from the plugin BOM.
-- Do not add a direct `tools.jackson.*` library dependency when functionality is available through `jackson3-api`.
+- **Depend on the Jackson API plugin, never on the Jackson library directly.** Concretely: declare `io.jenkins.plugins:jackson3-api` and do not declare any artifact under the `tools.jackson.core` or `tools.jackson.dataformat` groups (for example `tools.jackson.core:jackson-core`) in this POM. Those coordinates are supplied transitively by the API plugin, which is what keeps a single Jackson on the classpath at runtime.
+  - The Jackson 3 Maven groupId and its Java package prefix happen to be the same string, `tools.jackson.*` — as was also true of Jackson 2's `com.fasterxml.jackson.*`. The rule above is about Maven coordinates; the corresponding *import* prefix in source is likewise `tools.jackson.*`, relocated from `com.fasterxml.jackson.*`.
 - Jackson 3 raises **unchecked** exceptions (`tools.jackson.core.exc.StreamReadException` extends `RuntimeException`), so the compiler will not enforce Section 12.5's sanitization boundary. Every call into Jackson shall be enclosed by a catch of `JacksonException`, and a test shall assert the exception *type* that crosses the engine boundary rather than only that parsing failed.
 - Enable dependency and bundled-artifact checks supplied by the modern plugin parent where practical.
 - Configure Dependabot or Renovate for dependency updates.
