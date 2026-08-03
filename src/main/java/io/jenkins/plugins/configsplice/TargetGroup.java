@@ -5,14 +5,22 @@ import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
+import hudson.model.Item;
+import hudson.util.ListBoxModel;
 import io.jenkins.plugins.configsplice.engine.ErrorCode;
 import io.jenkins.plugins.configsplice.engine.SpliceException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import jenkins.model.Jenkins;
+import net.sf.json.JSONArray;
+import net.sf.json.JSONObject;
+import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.kohsuke.stapler.StaplerRequest2;
+import org.kohsuke.stapler.verb.POST;
 
 /**
  * A set of file globs, one format, and the substitutions that apply only to those files
@@ -118,13 +126,10 @@ public class TargetGroup extends AbstractDescribableImpl<TargetGroup> {
          * supplies a list, and that case passes through untouched.
          */
         @Override
-        public TargetGroup newInstance(
-                org.kohsuke.stapler.StaplerRequest2 req, net.sf.json.JSONObject formData)
-                throws FormException {
-
+        public TargetGroup newInstance(StaplerRequest2 req, JSONObject formData) throws FormException {
             Object submitted = formData.opt("files");
             if (submitted instanceof String text) {
-                net.sf.json.JSONArray patterns = new net.sf.json.JSONArray();
+                JSONArray patterns = new JSONArray();
                 text.lines()
                         .map(String::trim)
                         .filter(line -> !line.isEmpty())
@@ -135,19 +140,18 @@ public class TargetGroup extends AbstractDescribableImpl<TargetGroup> {
         }
 
         /** Same permission model as every other web method here; see Substitution.DescriptorImpl. */
-        private static void checkConfigurePermission(@CheckForNull hudson.model.Item item) {
+        private static void checkConfigurePermission(@CheckForNull Item item) {
             if (item == null) {
-                jenkins.model.Jenkins.get().checkPermission(jenkins.model.Jenkins.ADMINISTER);
+                Jenkins.get().checkPermission(Jenkins.ADMINISTER);
             } else {
-                item.checkPermission(hudson.model.Item.CONFIGURE);
+                item.checkPermission(Item.CONFIGURE);
             }
         }
 
-        @org.kohsuke.stapler.verb.POST
-        public hudson.util.ListBoxModel doFillFormatItems(
-                @org.kohsuke.stapler.AncestorInPath hudson.model.Item item) {
+        @POST
+        public ListBoxModel doFillFormatItems(@AncestorInPath Item item) {
             checkConfigurePermission(item);
-            hudson.util.ListBoxModel items = new hudson.util.ListBoxModel();
+            ListBoxModel items = new ListBoxModel();
             items.add(Messages.TargetGroup_Format_auto(), "auto");
             items.add(Messages.TargetGroup_Format_json(), "json");
             items.add(Messages.TargetGroup_Format_xml(), "xml");

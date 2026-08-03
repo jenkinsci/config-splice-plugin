@@ -17,6 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import jenkins.model.Jenkins;
 import jenkins.agents.ControllerToAgentFileCallable;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.DisplayName;
@@ -201,7 +202,7 @@ class Gate2EvidenceTest {
     static void writeEvidence() throws IOException {
         List<String> report = new ArrayList<>();
         report.add("=== Gate 2 evidence: secret handling over remoting ===");
-        report.add("  jenkins: " + jenkins.model.Jenkins.VERSION + " / JDK "
+        report.add("  jenkins: " + Jenkins.VERSION + " / JDK "
                 + System.getProperty("java.version"));
         report.addAll(OBSERVATIONS);
 

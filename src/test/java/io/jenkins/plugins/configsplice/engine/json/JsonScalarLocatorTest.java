@@ -1,6 +1,7 @@
 package io.jenkins.plugins.configsplice.engine.json;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import io.jenkins.plugins.configsplice.engine.ErrorCode;
@@ -233,7 +234,7 @@ class JsonScalarLocatorTest {
                     SpliceException.class,
                     () -> JsonScalarLocator.locate(json, JsonPathParser.parse("Secret")));
             assertEquals(ErrorCode.PARSE_FAILED, thrown.code());
-            org.junit.jupiter.api.Assertions.assertFalse(
+            assertFalse(
                     thrown.getMessage().contains("s3cr3t-token"),
                     "parser messages must never reach the caller verbatim");
         }

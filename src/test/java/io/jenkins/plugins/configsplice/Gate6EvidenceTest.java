@@ -6,12 +6,16 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import jenkins.model.Jenkins;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -123,12 +127,12 @@ class Gate6EvidenceTest {
         // Package-private on a package-private class: unreachable from a Pipeline script, from
         // another plugin, and from the step's own public surface.
         assertFalse(
-                java.lang.reflect.Modifier.isPublic(SubstitutionCallable.class.getModifiers()),
+                Modifier.isPublic(SubstitutionCallable.class.getModifiers()),
                 "the callable itself must not be public");
 
-        boolean anyPublicHookMethod = java.util.Arrays.stream(SubstitutionCallable.class.getDeclaredMethods())
-                .filter(method -> method.getName().toLowerCase(java.util.Locale.ROOT).contains("hook"))
-                .anyMatch(method -> java.lang.reflect.Modifier.isPublic(method.getModifiers()));
+        boolean anyPublicHookMethod = Arrays.stream(SubstitutionCallable.class.getDeclaredMethods())
+                .filter(method -> method.getName().toLowerCase(Locale.ROOT).contains("hook"))
+                .anyMatch(method -> Modifier.isPublic(method.getModifiers()));
         assertFalse(anyPublicHookMethod, "the seam must not be exposed as a public method");
 
         record("seam visibility", "package-private on a package-private class");
@@ -138,7 +142,7 @@ class Gate6EvidenceTest {
     static void writeEvidence() throws IOException {
         List<String> report = new ArrayList<>();
         report.add("=== Gate 6 evidence: pre-commit test seam ===");
-        report.add("  jenkins: " + jenkins.model.Jenkins.VERSION + " / JDK "
+        report.add("  jenkins: " + Jenkins.VERSION + " / JDK "
                 + System.getProperty("java.version"));
         report.addAll(OBSERVATIONS);
 
