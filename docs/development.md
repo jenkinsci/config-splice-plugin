@@ -84,6 +84,7 @@ output, so the Windows and Linux legs can be compared directly after a change.
 
 ## Requirements specification
 
-[`requirements-v0.7.md`](requirements-v0.7.md) is the specification the implementation was built
-against. Version 0.7 amends four sections from measurements taken during implementation; Section 20
-records the decision-gate outcomes and Appendix C indexes the ADRs against the sections they support.
+[`requirements-v0.8.md`](requirements-v0.8.md) is the specification the implementation was built
+against. Version 0.7 amended four sections from measurements taken during implementation, and 0.8
+adds generic XML paths (Section 8.7); Section 20 records the decision-gate outcomes and Appendix C
+indexes the ADRs against the sections they support.

@@ -6,7 +6,7 @@
     <li><code>Serilog.'MinimumLevel.Default'</code> - a literal key containing dots</li>
     <li><code>Services[0].Url</code> - zero-based array index</li>
   </ul>
-  <p><b>XML</b> - the two .NET configuration collections only:</p>
+  <p><b>XML</b> - shorthands for the two .NET configuration collections:</p>
   <ul>
     <li><code>appSettings.ApiUrl</code> - the <code>value</code> attribute of the matching entry</li>
     <li><code>appSettings.BankApi:Key</code> - colons and dots are literal here, never navigation</li>
@@ -17,5 +17,24 @@
     Matching is exact and case-sensitive. Only entries directly inside the top-level
     <code>appSettings</code> or <code>connectionStrings</code> element are considered; entries inside
     <code>&lt;location&gt;</code> and external files referenced by <code>file=</code> are not.
+  </p>
+  <p>
+    <b>XML</b> - anything else is reached by walking elements from the document root, ending in
+    <code>.@attribute</code> or <code>.#text</code>:
+  </p>
+  <ul>
+    <li><code>configuration.'system.webServer'.security.requestFiltering.requestLimits.@maxAllowedContentLength</code>
+      - a nested attribute; note that an element name containing a dot must be quoted</li>
+    <li><code>configuration.branding.title.#text</code> - the element's own text</li>
+    <li><code>configuration.'system.webServer'.handlers.add[1].@name</code> - the second matching
+      sibling, zero-based</li>
+    <li><code>configuration.location.'system.web'.authorization.deny.@users</code> - content inside
+      <code>&lt;location&gt;</code>, which the shorthands do not reach</li>
+  </ul>
+  <p>
+    Element names match exactly as written, namespace prefix included. If a step matches more than one
+    sibling and carries no index, the build fails rather than guessing which one you meant - add
+    <code>[0]</code>, <code>[1]</code> and so on to choose. Missing elements and attributes are
+    reported as missing paths and are never created.
   </p>
 </div>

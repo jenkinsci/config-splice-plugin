@@ -10,6 +10,15 @@ package io.jenkins.plugins.configsplice.engine;
  */
 public enum ErrorCode {
     PATH_SYNTAX,
+
+    /**
+     * No longer reachable from a step invocation.
+     *
+     * <p>Since SRS section 8.7 added generic XML paths, every XML path is either a shorthand or a
+     * generic path, so nothing is left to be "unsupported". Retained because the code is part of the
+     * documented contract of section 15.3 and is still produced by
+     * {@code DotNetPathParser} when that parser is called directly with a non-shorthand path.
+     */
     XML_PATH_UNSUPPORTED,
     TARGET_GROUP_OVERLAP,
     FILE_NOT_FOUND,

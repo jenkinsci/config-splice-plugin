@@ -17,7 +17,10 @@ import io.jenkins.plugins.configsplice.engine.json.JsonStrings;
 import io.jenkins.plugins.configsplice.engine.xml.DotNetAttributeLocator;
 import io.jenkins.plugins.configsplice.engine.xml.DotNetPath;
 import io.jenkins.plugins.configsplice.engine.xml.DotNetPathParser;
+import io.jenkins.plugins.configsplice.engine.xml.GenericXmlLocator;
 import io.jenkins.plugins.configsplice.engine.xml.XmlAttributes;
+import io.jenkins.plugins.configsplice.engine.xml.XmlPath;
+import io.jenkins.plugins.configsplice.engine.xml.XmlPathParser;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -230,6 +233,14 @@ final class SubstitutionCallable implements ControllerToAgentFileCallable<HashMa
         return new Replacement(located.range(), JsonValues.serialise(substitution, located.kind()));
     }
 
+    /**
+     * Resolves an XML path, dispatching on its leading step.
+     *
+     * <p>A path beginning {@code appSettings.} or {@code connectionStrings.} is .NET shorthand, where
+     * the remainder is one literal key. Anything else is a generic element path starting at the
+     * document element. The two cannot collide: a generic path always begins with the document
+     * element name, which is {@code configuration}.
+     */
     private Replacement locateXml(String text, SubstitutionRequest.Sub substitution)
             throws SpliceException {
         if (!substitution.type.validForXml()) {
@@ -238,10 +249,29 @@ final class SubstitutionCallable implements ControllerToAgentFileCallable<HashMa
                     "path '" + substitution.path
                             + "' uses a type that does not apply to XML; only 'auto' and 'string' are valid");
         }
-        DotNetPath path = DotNetPathParser.parse(substitution.path);
-        DotNetAttributeLocator.Located located = DotNetAttributeLocator.locate(text, path);
         String plain = substitution.value == null ? "" : substitution.value.plainText();
-        return new Replacement(located.range(), XmlAttributes.encode(plain, located.quote()));
+
+        if (isDotNetShorthand(substitution.path)) {
+            DotNetPath path = DotNetPathParser.parse(substitution.path);
+            DotNetAttributeLocator.Located located = DotNetAttributeLocator.locate(text, path);
+            return new Replacement(located.range(), XmlAttributes.encode(plain, located.quote()));
+        }
+
+        XmlPath path = XmlPathParser.parse(substitution.path);
+        GenericXmlLocator.Located located = GenericXmlLocator.locate(text, path);
+        String replacement = located.kind() == GenericXmlLocator.Located.Kind.TEXT
+                ? XmlAttributes.encodeText(plain)
+                : XmlAttributes.encode(plain, located.quote());
+        return new Replacement(located.range(), replacement);
+    }
+
+    private static boolean isDotNetShorthand(String path) {
+        for (DotNetPath.Collection collection : DotNetPath.Collection.values()) {
+            if (path.startsWith(collection.pathPrefix())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Serialises a replacement as a JSON literal according to SRS sections 7.2 and 7.3. */

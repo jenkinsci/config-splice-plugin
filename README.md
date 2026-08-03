@@ -46,7 +46,7 @@ never applied to JSON files.
 
 ### XML
 
-Version 1.0 supports the two .NET configuration collections that matter in practice.
+Two shorthands cover the .NET configuration collections that matter in practice.
 
 | Path | Resolves to |
 |---|---|
@@ -57,6 +57,31 @@ Version 1.0 supports the two .NET configuration collections that matter in pract
 
 Matching is exact and case-sensitive. Only entries directly inside the top-level `appSettings` or
 `connectionStrings` element are considered.
+
+Anything else in the document is reached by walking elements from the document root and ending in
+`.@attribute` or `.#text`:
+
+| Path | Resolves to |
+|---|---|
+| `configuration.'system.webServer'.security.requestFiltering.requestLimits.@maxAllowedContentLength` | that attribute |
+| `configuration.branding.title.#text` | the element's text |
+| `configuration.'system.webServer'.handlers.add[1].@name` | the **second** `add` child |
+| `configuration.location.'system.web'.authorization.deny.@users` | content inside `<location>` |
+
+A path starting `appSettings.` or `connectionStrings.` is always the shorthand; anything else is a
+generic path. Three rules are worth knowing:
+
+- **Dots separate steps.** An element whose name contains one — `system.webServer` — must be quoted,
+  or it reads as two steps.
+- **Names are matched exactly as written**, prefix included. `xdt:add` matches `xdt:add` and nothing
+  else; namespace URIs are never resolved.
+- **Ambiguity fails rather than guesses.** If a step matches more than one sibling and carries no
+  `[n]`, the build fails instead of silently picking the first — document order is not something you
+  should have to reason about. Add `[0]`, `[1]`, … to choose.
+
+Absent elements and attributes are treated as missing paths and are **never created**. `#text` works
+only where the element contains text and nothing else; an element holding child elements, comments or
+CDATA is reported as ambiguous rather than having its markup overwritten.
 
 ## Value types
 
@@ -156,11 +181,13 @@ per-pattern and per-substitution records. The result contains no values and no c
 
 - **UTF-8 only.** UTF-16 files, and XML declarations naming `us-ascii`, `iso-8859-1` or
   `windows-1252`, are rejected before modification rather than transcoded.
-- **XML support is the two shorthands above.** Generic element traversal, arbitrary attributes,
-  element text and XML indexes are not supported. **XDT transforms are out of scope** — this plugin
-  substitutes values, it does not run `Web.Release.config`.
-- **`appSettings file="..."` is not followed**, and entries inside `<location>` are not matched by the
-  shorthand.
+- **XML paths address existing attributes and element text only.** Elements cannot be created, moved
+  or removed. **XDT transforms are out of scope** — this plugin substitutes values, it does not run
+  `Web.Release.config`.
+- **`appSettings file="..."` is not followed.** Entries inside `<location>` are not matched by the
+  shorthands, though a generic path reaches them.
+- **Namespace prefixes are lexical.** Two prefixes bound to the same namespace URI are not
+  interchangeable in a path.
 - **One target group per file.** A file matched by two groups is rejected; consolidate the group or
   use non-overlapping patterns.
 - **Only scalars.** JSON objects and arrays cannot be replaced wholesale.
