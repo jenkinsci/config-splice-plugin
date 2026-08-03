@@ -19,7 +19,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
 /**
- * Which XML path grammar a path is routed to (SRS section 8.4).
+ * Which XML path grammar a path is routed to (SRS section 6.1 rules 2 to 4).
  *
  * <p>The two grammars coexist, so dispatch is the part most likely to break a working job: a path that
  * used to reach a .NET collection must keep reaching it, and adding generic traversal must not change

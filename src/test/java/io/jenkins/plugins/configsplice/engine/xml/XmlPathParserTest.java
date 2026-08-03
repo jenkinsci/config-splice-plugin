@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-/** The generic XML path grammar of SRS section 8.4. */
+/** The generic XML path grammar of SRS section 8.7.1. */
 class XmlPathParserTest {
 
     private static List<String> namesOf(XmlPath path) {
