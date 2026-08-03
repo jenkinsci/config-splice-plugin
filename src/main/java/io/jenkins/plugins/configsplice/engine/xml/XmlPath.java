@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * A generic XML path: a chain of element steps ending in a selector (SRS section 8.4).
+ * A generic XML path: a chain of element steps ending in a selector (SRS section 8.7).
  *
  * <pre>
  * configuration.'system.webServer'.security.requestFiltering.requestLimits.&#64;maxAllowedContentLength
@@ -22,7 +22,7 @@ import java.util.Objects;
  *
  * <p>Matching is entirely lexical. An element written {@code xdt:add} in the source is matched by the
  * path {@code xdt:add} and by nothing else; namespace URIs are never resolved and prefixes are never
- * treated as interchangeable (SRS section 8.4 rules 7 and 8).
+ * treated as interchangeable (SRS section 8.7.2 rule 2).
  */
 public record XmlPath(List<Element> elements, Selector selector) {
 

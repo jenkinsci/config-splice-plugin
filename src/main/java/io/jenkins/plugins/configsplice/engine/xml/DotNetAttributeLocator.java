@@ -46,6 +46,12 @@ public final class DotNetAttributeLocator {
         public String decodedValue() {
             return XmlAttributes.decode(rawValue);
         }
+
+        /** Masks {@code rawValue}: the value currently in the file may itself be a secret. */
+        @Override
+        public String toString() {
+            return "Located[@" + range.start() + ".." + range.end() + ", value hidden]";
+        }
     }
 
     private DotNetAttributeLocator() {

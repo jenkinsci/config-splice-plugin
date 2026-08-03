@@ -510,7 +510,9 @@ The output shall be byte-for-byte identical to the input outside exact replaceme
 - UTF-8 BOM state;
 - untouched entity spelling.
 
-Replacement XML attribute content shall be escaped correctly for its source quote context. Version 1.0 does not replace XML element text.
+Replacement XML attribute content shall be escaped correctly for its source quote context; replacement element text shall be escaped per Section 8.7.3.
+
+An element-text replacement (Section 8.7) replaces the **whole** character range between the element's start and end tags, including any leading or trailing whitespace and line breaks in that range. Replacing the text of a pretty-printed element therefore collapses it onto one line. This follows from the range being the target, and is the only case in which the plugin alters whitespace; it shall be documented in user-facing help.
 
 ### 8.6 Explicit XDT exclusion
 
@@ -583,7 +585,7 @@ A `warn` setting never marks the build `UNSTABLE`. Teams requiring CI gating sha
 The following are structural, security, or programming errors and shall not be downgraded to warnings in Version 1.0:
 
 - malformed or unsupported path syntax;
-- unsupported XML path outside the two shorthands;
+- an ambiguous generic XML path (Section 8.7.2 rules 4 and 8);
 - malformed or unsupported XML/JSON;
 - unsupported or non-UTF-8 declared encoding;
 - JSON path resolving to a non-scalar;

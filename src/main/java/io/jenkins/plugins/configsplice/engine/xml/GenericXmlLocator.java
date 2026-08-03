@@ -9,7 +9,7 @@ import java.util.Deque;
 import java.util.List;
 
 /**
- * Locates the source range addressed by a generic {@link XmlPath} (SRS section 8.4).
+ * Locates the source range addressed by a generic {@link XmlPath} (SRS section 8.7).
  *
  * <p>Same two-pass split as {@link DotNetAttributeLocator}: StAX proves the document well formed and
  * safe, then {@link XmlTagScanner} — which resolves no entities and loads nothing external — computes
@@ -23,7 +23,13 @@ import java.util.List;
  */
 public final class GenericXmlLocator {
 
-    /** A located target: an attribute value, or an element's text. */
+    /**
+     * A located target: an attribute value, or an element's text.
+     *
+     * <p>{@code rawValue} is the value currently in the file, which in a configuration file may
+     * itself be a secret. The generated record {@code toString()} would print it, so it is
+     * overridden to mask.
+     */
     public record Located(SourceRange range, Kind kind, char quote, String rawValue) {
 
         public enum Kind {
@@ -34,6 +40,11 @@ public final class GenericXmlLocator {
         /** The current value with entities resolved, for idempotency comparisons. */
         public String decodedValue() {
             return XmlAttributes.decode(rawValue);
+        }
+
+        @Override
+        public String toString() {
+            return "Located[" + kind + " @" + range.start() + ".." + range.end() + ", value hidden]";
         }
     }
 
@@ -106,7 +117,7 @@ public final class GenericXmlLocator {
 
         XmlTagScanner.Attribute attribute = node.tag.attribute(selector.name());
         if (attribute == null) {
-            // SRS 8.4 rule 5: an absent attribute is a missing path, never a creation.
+            // SRS section 8.7.2 rule 7: an absent attribute is a missing path, never a creation.
             throw new SpliceException(
                     ErrorCode.PATH_MISSING,
                     "element '" + node.tag.name() + "' has no '" + selector.name()
@@ -123,7 +134,7 @@ public final class GenericXmlLocator {
     /**
      * Computes an element's own text range.
      *
-     * <p>SRS section 8.4 rule 6 admits {@code #text} only for one unambiguous scalar text range with
+     * <p>SRS section 8.7.2 rule 8 admits {@code #text} only for one unambiguous scalar text range with
      * no mixed-content ambiguity, so anything other than plain characters between the tags is
      * refused. The check is for any {@code <} in the region, which covers child elements, comments,
      * CDATA and processing instructions in one test — replacing a range containing any of those would

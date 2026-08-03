@@ -37,4 +37,11 @@
     <code>[0]</code>, <code>[1]</code> and so on to choose. Missing elements and attributes are
     reported as missing paths and are never created.
   </p>
+  <p>
+    <code>.#text</code> replaces everything between the tags, indentation included, so an element
+    written across several lines collapses onto one. This is the only case in which a substitution
+    changes whitespace. It also requires the element to hold text and nothing else - one containing
+    child elements, comments or CDATA is reported as ambiguous rather than having its markup
+    overwritten.
+  </p>
 </div>

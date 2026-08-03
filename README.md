@@ -83,6 +83,17 @@ Absent elements and attributes are treated as missing paths and are **never crea
 only where the element contains text and nothing else; an element holding child elements, comments or
 CDATA is reported as ambiguous rather than having its markup overwritten.
 
+`#text` replaces everything between the tags, indentation included, so a pretty-printed element
+collapses onto one line:
+
+```xml
+<title>                        <title>Production Portal</title>
+    Staging Portal      →
+</title>
+```
+
+This is the one case where the plugin changes whitespace. Attribute substitutions never do.
+
 ## Value types
 
 By default a replacement takes the type already present: a JSON number stays an unquoted number, a

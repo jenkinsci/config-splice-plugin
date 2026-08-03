@@ -2,6 +2,7 @@ package io.jenkins.plugins.configsplice.engine.xml;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.jenkins.plugins.configsplice.engine.ErrorCode;
 import io.jenkins.plugins.configsplice.engine.ExactPreservationOracle;
@@ -11,7 +12,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-/** Generic XML element traversal (SRS section 8.4). */
+/** Generic XML element traversal (SRS section 8.7). */
 class GenericXmlLocatorTest {
 
     /**
@@ -160,7 +161,7 @@ class GenericXmlLocatorTest {
         void ambiguousStep() {
             SpliceException thrown =
                     reject("configuration.'system.webServer'.handlers.add.@name", ErrorCode.PATH_AMBIGUOUS);
-            org.junit.jupiter.api.Assertions.assertTrue(
+            assertTrue(
                     thrown.getMessage().contains("add[0]"),
                     "the message should suggest how to disambiguate: " + thrown.getMessage());
         }
@@ -230,6 +231,36 @@ class GenericXmlLocatorTest {
             assertEquals(1, countOf(output, "maxAllowedContentLength=\"60000000\""));
             assertEquals(1, countOf(output, "<mixed>text <b>and</b> markup</mixed>"), "untouched");
             assertEquals(countOf(WEB_CONFIG, "\r\n"), countOf(output, "\r\n"));
+        }
+
+        @Test
+        @DisplayName("#text spans the whole inter-tag range, indentation included")
+        void textRangeIncludesSurroundingWhitespace() throws Exception {
+            // The one case where the plugin does alter whitespace, so it is pinned rather than left
+            // to be discovered: the target is the range between the tags, and on a pretty-printed
+            // element that range is the indentation as well as the words (SRS 8.5, 8.7.2 rule 8).
+            String pretty = String.join("\r\n",
+                    "<configuration>",
+                    "  <branding>",
+                    "    <title>",
+                    "      Staging Portal",
+                    "    </title>",
+                    "  </branding>",
+                    "</configuration>",
+                    "");
+
+            GenericXmlLocator.Located located =
+                    GenericXmlLocator.locate(pretty, XmlPathParser.parse("configuration.branding.title.#text"));
+            assertEquals("\r\n      Staging Portal\r\n    ", located.rawValue());
+
+            String output = SplicePlan.builder()
+                    .add(located.range(), XmlAttributes.encodeText("Production Portal"), "title")
+                    .build()
+                    .applyTo(pretty);
+
+            assertTrue(
+                    output.contains("<title>Production Portal</title>"),
+                    "the element collapses onto one line: " + output);
         }
 
         @Test

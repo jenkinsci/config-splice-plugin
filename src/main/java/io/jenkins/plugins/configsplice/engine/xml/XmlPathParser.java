@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Parser for the generic XML path grammar of SRS section 8.4.
+ * Parser for the generic XML path grammar of SRS section 8.7.
  *
  * <pre>
  * path     := element ( '.' element )* '.' selector
