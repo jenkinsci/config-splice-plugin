@@ -2,15 +2,21 @@ package io.jenkins.plugins.configsplice;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import hudson.security.ACL;
+import hudson.security.ACLContext;
 import hudson.util.ListBoxModel;
 import java.util.List;
+import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.workflow.steps.StepConfigTester;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.MockAuthorizationStrategy;
 import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
+import org.springframework.security.access.AccessDeniedException;
 
 /**
  * Verifies the form views actually bind, not merely parse.
@@ -183,70 +189,59 @@ class ConfigRoundTripTest {
         // Every doCheck/doFill endpoint is reachable by anyone who can guess the URL, so each one
         // checks permission even when it only inspects a string. Verified rather than assumed,
         // because the Jenkins security scan flags exactly this and a missing check is silent.
-        j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
-        j.jenkins.setAuthorizationStrategy(new org.jvnet.hudson.test.MockAuthorizationStrategy()
-                .grant(jenkins.model.Jenkins.READ)
-                .everywhere()
-                .toAuthenticated());
+        lockDown(j);
 
         Substitution.DescriptorImpl substitutions =
                 j.jenkins.getDescriptorByType(Substitution.DescriptorImpl.class);
         ConfigSubstitutionStep.DescriptorImpl step =
                 j.jenkins.getDescriptorByType(ConfigSubstitutionStep.DescriptorImpl.class);
+        TargetGroup.DescriptorImpl groups = j.jenkins.getDescriptorByType(TargetGroup.DescriptorImpl.class);
 
-        try (hudson.security.ACLContext ignored =
-                hudson.security.ACL.as2(jenkins.model.Jenkins.ANONYMOUS2)) {
-
-            org.junit.jupiter.api.Assertions.assertThrows(
-                    org.springframework.security.access.AccessDeniedException.class,
+        try (ACLContext ignored = ACL.as2(Jenkins.ANONYMOUS2)) {
+            assertThrows(
+                    AccessDeniedException.class,
                     () -> substitutions.doCheckPath(null, "anything"),
                     "doCheckPath must refuse an unauthorised caller");
-
-            org.junit.jupiter.api.Assertions.assertThrows(
-                    org.springframework.security.access.AccessDeniedException.class,
+            assertThrows(
+                    AccessDeniedException.class,
                     () -> substitutions.doCheckValue(null, "v", ""),
                     "doCheckValue must refuse an unauthorised caller");
-
-            org.junit.jupiter.api.Assertions.assertThrows(
-                    org.springframework.security.access.AccessDeniedException.class,
-                    () -> step.doFillNoMatchBehaviorItems(null),
-                    "doFillNoMatchBehaviorItems must refuse an unauthorised caller");
-
-            org.junit.jupiter.api.Assertions.assertThrows(
-                    org.springframework.security.access.AccessDeniedException.class,
-                    () -> step.doFillMissingPathBehaviorItems(null),
-                    "doFillMissingPathBehaviorItems must refuse an unauthorised caller");
-
-            org.junit.jupiter.api.Assertions.assertThrows(
-                    org.springframework.security.access.AccessDeniedException.class,
+            assertThrows(
+                    AccessDeniedException.class,
                     () -> substitutions.doFillTypeItems(null),
                     "doFillTypeItems must refuse an unauthorised caller");
-
-            org.junit.jupiter.api.Assertions.assertThrows(
-                    org.springframework.security.access.AccessDeniedException.class,
-                    () -> j.jenkins
-                            .getDescriptorByType(TargetGroup.DescriptorImpl.class)
-                            .doFillFormatItems(null),
+            assertThrows(
+                    AccessDeniedException.class,
+                    () -> step.doFillNoMatchBehaviorItems(null),
+                    "doFillNoMatchBehaviorItems must refuse an unauthorised caller");
+            assertThrows(
+                    AccessDeniedException.class,
+                    () -> step.doFillMissingPathBehaviorItems(null),
+                    "doFillMissingPathBehaviorItems must refuse an unauthorised caller");
+            assertThrows(
+                    AccessDeniedException.class,
+                    () -> groups.doFillFormatItems(null),
                     "doFillFormatItems must refuse an unauthorised caller");
         }
+    }
+
+    /** Leaves the instance secured so descriptors are queried without ADMINISTER. */
+    private static void lockDown(JenkinsRule j) throws Exception {
+        j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
+        j.jenkins.setAuthorizationStrategy(
+                new MockAuthorizationStrategy().grant(Jenkins.READ).everywhere().toAuthenticated());
     }
 
     @Test
     @DisplayName("the credential picker does not enumerate credentials for an anonymous caller")
     void credentialPickerRespectsPermissions(JenkinsRule j) throws Exception {
-        // Lock the instance down so the descriptor is queried without ADMINISTER.
-        j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
-        j.jenkins.setAuthorizationStrategy(new org.jvnet.hudson.test.MockAuthorizationStrategy()
-                .grant(jenkins.model.Jenkins.READ)
-                .everywhere()
-                .toAuthenticated());
+        lockDown(j);
 
         Substitution.DescriptorImpl descriptor =
                 j.jenkins.getDescriptorByType(Substitution.DescriptorImpl.class);
 
         ListBoxModel items;
-        try (hudson.security.ACLContext ignored =
-                hudson.security.ACL.as2(jenkins.model.Jenkins.ANONYMOUS2)) {
+        try (ACLContext ignored = ACL.as2(Jenkins.ANONYMOUS2)) {
             items = descriptor.doFillCredentialsIdItems(null, "already-selected");
         }
 

@@ -1,6 +1,7 @@
 package io.jenkins.plugins.configsplice.engine;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
@@ -188,7 +189,7 @@ public final class AtomicFileWriter {
 
     private static void writeAndSync(Path temp, byte[] content) throws IOException {
         try (FileChannel channel = FileChannel.open(temp, StandardOpenOption.WRITE)) {
-            channel.write(java.nio.ByteBuffer.wrap(content));
+            channel.write(ByteBuffer.wrap(content));
             // Flush to the device before the rename, so a crash cannot leave the target pointing at
             // a file whose metadata exists but whose contents were never persisted.
             channel.force(true);

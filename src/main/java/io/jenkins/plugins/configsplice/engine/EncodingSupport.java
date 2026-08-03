@@ -1,5 +1,6 @@
 package io.jenkins.plugins.configsplice.engine;
 
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
@@ -146,7 +147,7 @@ public final class EncodingSupport {
     }
 
     /** Convenience for tests and callers that already hold text: the UTF-8 charset used throughout. */
-    public static java.nio.charset.Charset charset() {
+    public static Charset charset() {
         return StandardCharsets.UTF_8;
     }
 

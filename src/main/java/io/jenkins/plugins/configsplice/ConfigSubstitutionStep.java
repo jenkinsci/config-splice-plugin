@@ -5,8 +5,10 @@ import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.FilePath;
+import hudson.model.Item;
 import hudson.model.Run;
 import hudson.model.TaskListener;
+import hudson.util.ListBoxModel;
 import io.jenkins.plugins.configsplice.engine.ErrorCode;
 import io.jenkins.plugins.configsplice.engine.SpliceException;
 import java.io.PrintStream;
@@ -15,14 +17,17 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.plaincredentials.StringCredentials;
 import org.jenkinsci.plugins.workflow.steps.Step;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
+import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.kohsuke.stapler.verb.POST;
 
 /**
  * The {@code configSubstitution} Pipeline step (SRS section 4).
@@ -255,30 +260,28 @@ public class ConfigSubstitutionStep extends Step {
             return Set.of(Run.class, FilePath.class, TaskListener.class);
         }
 
-        @org.kohsuke.stapler.verb.POST
-        public hudson.util.ListBoxModel doFillNoMatchBehaviorItems(
-                @org.kohsuke.stapler.AncestorInPath hudson.model.Item item) {
+        @POST
+        public ListBoxModel doFillNoMatchBehaviorItems(@AncestorInPath Item item) {
             checkConfigurePermission(item);
             return behaviorItems();
         }
 
-        @org.kohsuke.stapler.verb.POST
-        public hudson.util.ListBoxModel doFillMissingPathBehaviorItems(
-                @org.kohsuke.stapler.AncestorInPath hudson.model.Item item) {
+        @POST
+        public ListBoxModel doFillMissingPathBehaviorItems(@AncestorInPath Item item) {
             checkConfigurePermission(item);
             return behaviorItems();
         }
 
-        private static void checkConfigurePermission(@CheckForNull hudson.model.Item item) {
+        private static void checkConfigurePermission(@CheckForNull Item item) {
             if (item == null) {
-                jenkins.model.Jenkins.get().checkPermission(jenkins.model.Jenkins.ADMINISTER);
+                Jenkins.get().checkPermission(Jenkins.ADMINISTER);
             } else {
-                item.checkPermission(hudson.model.Item.CONFIGURE);
+                item.checkPermission(Item.CONFIGURE);
             }
         }
 
-        private static hudson.util.ListBoxModel behaviorItems() {
-            hudson.util.ListBoxModel items = new hudson.util.ListBoxModel();
+        private static ListBoxModel behaviorItems() {
+            ListBoxModel items = new ListBoxModel();
             items.add(Messages.Behavior_fail(), "fail");
             items.add(Messages.Behavior_warn(), "warn");
             items.add(Messages.Behavior_ignore(), "ignore");

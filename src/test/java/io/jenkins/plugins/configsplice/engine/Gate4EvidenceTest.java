@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -165,7 +167,7 @@ class Gate4EvidenceTest {
                 workspace,
                 "held-by-channel.config",
                 "target open via FileChannel (READ)",
-                target -> java.nio.channels.Channels.newInputStream(
+                target -> Channels.newInputStream(
                         FileChannel.open(target, StandardOpenOption.READ)));
     }
 
@@ -301,7 +303,7 @@ class Gate4EvidenceTest {
      * cross-platform CI comparison, so it needs to survive the build as an artifact rather than
      * depend on how the test runner happens to capture console output.
      */
-    @org.junit.jupiter.api.AfterAll
+    @AfterAll
     static void writeEvidence() throws IOException {
         List<String> report = new ArrayList<>();
         report.add("=== Gate 4 evidence: atomic replacement ===");

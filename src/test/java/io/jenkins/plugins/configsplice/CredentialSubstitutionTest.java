@@ -10,6 +10,7 @@ import com.cloudbees.plugins.credentials.CredentialsScope;
 import com.cloudbees.plugins.credentials.CredentialsStore;
 import com.cloudbees.plugins.credentials.domains.Domain;
 import hudson.model.ItemGroup;
+import hudson.model.Result;
 import hudson.util.Secret;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -165,7 +166,7 @@ class CredentialSubstitutionTest {
         WorkflowJob job = j.createProject(WorkflowJob.class, "missing-credential");
         job.setDefinition(new CpsFlowDefinition(pipeline("no-such-credential", ""), true));
 
-        WorkflowRun run = j.assertBuildStatus(hudson.model.Result.FAILURE, job.scheduleBuild2(0));
+        WorkflowRun run = j.assertBuildStatus(Result.FAILURE, job.scheduleBuild2(0));
         String log = JenkinsRule.getLog(run);
 
         j.assertLogContains("CONFIG_SUBSTITUTION_CREDENTIAL_UNAVAILABLE", run);
@@ -190,7 +191,7 @@ class CredentialSubstitutionTest {
         WorkflowJob job = j.createProject(WorkflowJob.class, "credential-type-ack");
         job.setDefinition(new CpsFlowDefinition(script, true));
 
-        WorkflowRun run = j.assertBuildStatus(hudson.model.Result.FAILURE, job.scheduleBuild2(0));
+        WorkflowRun run = j.assertBuildStatus(Result.FAILURE, job.scheduleBuild2(0));
 
         j.assertLogContains("CONFIG_SUBSTITUTION_CREDENTIAL_TYPE_ACK_REQUIRED", run);
         assertSecretConfinedToWorkspace(j, run);

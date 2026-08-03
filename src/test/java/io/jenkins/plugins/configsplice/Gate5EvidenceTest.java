@@ -8,6 +8,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import jenkins.model.Jenkins;
+import org.jenkinsci.Symbol;
 import org.jenkinsci.plugins.scriptsecurity.scripts.ScriptApproval;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
@@ -121,7 +123,7 @@ class Gate5EvidenceTest {
 
         assertEquals("configSubstitution", descriptor.getFunctionName());
         assertTrue(
-                ConfigSubstitutionStep.class.getAnnotation(org.jenkinsci.Symbol.class) == null,
+                ConfigSubstitutionStep.class.getAnnotation(Symbol.class) == null,
                 "the step must not depend on @Symbol for resolution");
         record("StepDescriptor.getFunctionName()", "configSubstitution, no @Symbol involved");
     }
@@ -158,7 +160,7 @@ class Gate5EvidenceTest {
     static void writeEvidence() throws IOException {
         List<String> report = new ArrayList<>();
         report.add("=== Gate 5 evidence: step resolution and sandbox-safe result map ===");
-        report.add("  jenkins: " + jenkins.model.Jenkins.VERSION + " / JDK "
+        report.add("  jenkins: " + Jenkins.VERSION + " / JDK "
                 + System.getProperty("java.version"));
         report.addAll(OBSERVATIONS);
 
