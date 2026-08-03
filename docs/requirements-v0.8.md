@@ -1,11 +1,29 @@
 # Software Requirements Specification
 ## Jenkins Configuration Property Substitution Plugin
 
-**Version:** 0.7  
-**Status:** Implementation baseline, amended from measured results  
-**Date:** August 2, 2026  
-**Supersedes:** Version 0.6  
+**Version:** 0.8  
+**Status:** Released baseline, extended with generic XML paths  
+**Date:** August 3, 2026  
+**Supersedes:** Version 0.7  
 
+> **What changed in 0.8.** Version 1.0 shipped as `11.v2c4a_4cb_cc6d5` against the 0.7 baseline. This
+> version records one **scope addition**: generic XML element traversal, deferred in 0.4 and listed as
+> a Version 1.1 candidate in §21.2, is now implemented.
+>
+> | Change | Sections |
+> |---|---|
+> | Generic XML path grammar and resolution rules (new) | §8.7 |
+> | XML dispatch now falls through to the generic grammar instead of failing | §6.1 |
+> | Shorthand-only document-shape rules scoped to the shorthands | §8.4 |
+> | Generic XML removed from the exclusion list; XDT exclusion unchanged | §8.6 |
+> | `CONFIG_SUBSTITUTION_XML_PATH_UNSUPPORTED` no longer reachable | §15.3 |
+> | Acceptance criterion 9 replaced; criteria 44–50 added | §18 |
+> | Moved from V1.1 candidates into delivered scope | §21.1, §21.2 |
+>
+> The two .NET shorthands are unchanged and keep precedence, so **every path valid under 0.7 keeps its
+> exact 0.7 meaning**. The addition is strictly widening: paths that previously failed with
+> `XML_PATH_UNSUPPORTED` now resolve or fail with a more specific code.
+>
 > **What changed in 0.7.** Version 0.6 was written before implementation. All six decision gates of
 > Section 20 have since been executed on Windows 10 and AlmaLinux 9. **Four of their findings
 > contradicted or under-specified this document** and are now corrected in place:
@@ -29,7 +47,7 @@
 ---
 
 ## 1. Executive summary
-The plugin shall provide a concise, secure Jenkins Pipeline step for replacing **existing scalar values** in JSON configuration files and in the two most common .NET XML configuration collections: `appSettings` and `connectionStrings`. It is intended to offer Jenkins users an experience comparable to Microsoft Variable Substitution while remaining explicit about file scope, path interpretation, type handling, source preservation, credentials, agent remoting, and failure behavior.
+The plugin shall provide a concise, secure Jenkins Pipeline step for replacing **existing scalar values** in JSON configuration files and in XML configuration files. XML addressing is by shorthand for the two most common .NET collections, `appSettings` and `connectionStrings`, and by generic element traversal (Section 8.7) for everything else. It is intended to offer Jenkins users an experience comparable to Microsoft Variable Substitution while remaining explicit about file scope, path interpretation, type handling, source preservation, credentials, agent remoting, and failure behavior.
 
 Version 1.0 is intentionally limited to the original user need and shall:
 
@@ -245,9 +263,11 @@ Support for aggregating **disjoint** path sets from overlapping groups may be co
 The effective file format determines which path language applies:
 
 1. For JSON, the JSON grammar in Section 6.2 applies to the complete path.
-2. For XML, the raw path must begin with the exact prefix `appSettings.` or `connectionStrings.` and is parsed only by the corresponding shorthand in Sections 8.2 or 8.3.
+2. For XML, a raw path beginning with the exact prefix `appSettings.` or `connectionStrings.` is parsed only by the corresponding shorthand in Sections 8.2 or 8.3.
 3. XML shorthand has complete precedence over the JSON/general member grammar. The shorthand remainder is not split into dot-separated members.
-4. Any other XML path fails with `CONFIG_SUBSTITUTION_XML_PATH_UNSUPPORTED` in Version 1.0.
+4. Any other XML path is parsed by the generic XML path grammar in Section 8.7.
+
+The prefix test in rule 2 is purely lexical and is applied before any parsing, so the routing of a given path never depends on document content. This is what makes the guarantee in rule 3 checkable: no document can cause a shorthand path to be reinterpreted as a generic one, or the reverse.
 
 ### 6.2 JSON path grammar
 
@@ -467,10 +487,12 @@ connectionStrings.'Literal.Name.Ending.@providerName'
 
 ### 8.4 Supported XML document shape and namespaces
 
-1. The document element must be the unprefixed lexical name `configuration`.
+Rules 1, 2 and 4 constrain **the shorthands of Sections 8.2 and 8.3 only**. Generic paths (Section 8.7) impose no document-shape requirement and are governed by their own matching rules.
+
+1. For the shorthands, the document element must be the unprefixed lexical name `configuration`.
 2. The shorthand matches unprefixed lexical names `appSettings`, `connectionStrings`, `add`, `key`, `name`, `value`, `connectionString`, and `providerName`.
 3. Namespace declarations may be present elsewhere in the document and do not by themselves make it unsupported.
-4. A namespace prefix on any element or attribute required by the shorthand prevents that node from matching; namespace-URI resolution and prefix remapping are out of scope.
+4. A namespace prefix on any element or attribute required by the shorthand prevents that node from matching; namespace-URI resolution and prefix remapping are out of scope, for shorthand and generic paths alike.
 5. XDT declarations such as `xmlns:xdt="..."` are permitted as unrelated source text, but XDT transform directives are not executed.
 
 ### 8.5 XML source preservation
@@ -488,11 +510,54 @@ The output shall be byte-for-byte identical to the input outside exact replaceme
 - UTF-8 BOM state;
 - untouched entity spelling.
 
-Replacement XML attribute content shall be escaped correctly for its source quote context. Version 1.0 does not replace XML element text.
+Replacement XML attribute content shall be escaped correctly for its source quote context; replacement element text shall be escaped per Section 8.7.3.
 
-### 8.6 Explicit XDT and generic XML exclusion
+An element-text replacement (Section 8.7) replaces the **whole** character range between the element's start and end tags, including any leading or trailing whitespace and line breaks in that range. Replacing the text of a pretty-printed element therefore collapses it onto one line. This follows from the range being the target, and is the only case in which the plugin alters whitespace; it shall be documented in user-facing help.
 
-The plugin shall document prominently that “configuration substitution” does not mean Microsoft XDT transformation. XDT files, transform directives, element insertion/removal, locator rules, generic XML paths, XML indexes, `#text`, and arbitrary XML attributes are out of scope for Version 1.0.
+### 8.6 Explicit XDT exclusion
+
+The plugin shall document prominently that “configuration substitution” does not mean Microsoft XDT transformation. XDT files, transform directives, locator rules, and any form of structural change — element insertion, removal, reordering, or attribute creation — remain out of scope.
+
+The distinction is that the plugin only ever **replaces the contents of a source range that already exists**. Generic XML paths (Section 8.7) widen what can be addressed; they do not widen what can be done to it.
+
+### 8.7 Generic XML paths
+
+Any XML path not claimed by the shorthands (Section 6.1 rule 2) is a generic path.
+
+#### 8.7.1 Grammar
+
+```text
+path     := element ( '.' element )* '.' selector
+element  := member index?
+member   := unquoted | quoted
+unquoted := one or more characters other than '.', '[', ']', '\'' and whitespace
+quoted   := '...'   with '' representing one literal single quote
+index    := '[' digits ']'
+selector := '@' member | '#text'
+```
+
+A path that does not end in a selector is a `CONFIG_SUBSTITUTION_PATH_SYNTAX` error. The terminal selector is mandatory because XML has no single obvious “value of an element”: without it, `configuration.appSettings` would be ambiguous between the element, its text, and an attribute on it.
+
+#### 8.7.2 Resolution rules
+
+1. The first element step matches the **document element**. Each subsequent step matches **direct children only**; there is no descendant search.
+2. Element and attribute members match the **exact case-sensitive lexical qualified name**, prefix included. `xdt:add` matches `xdt:add` and nothing else. Namespace-URI resolution and prefix remapping are out of scope (Section 8.4 rule 4).
+3. `[n]` selects the zero-based *n*-th occurrence among same-name direct children, in document order.
+4. A step **without** an index that matches more than one candidate fails with `CONFIG_SUBSTITUTION_PATH_AMBIGUOUS`. It is never resolved by taking the first match. The error message shall name an indexed form that would disambiguate it.
+5. `[n]` beyond the number of matching siblings fails with `CONFIG_SUBSTITUTION_PATH_MISSING`.
+6. A step matching no candidate fails with `CONFIG_SUBSTITUTION_PATH_MISSING`.
+7. `@name` targets that attribute's value range on the resolved element. An absent attribute is `CONFIG_SUBSTITUTION_PATH_MISSING`; attributes are **never created**.
+8. `#text` targets the character range between the resolved element's start and end tags. It is valid only where that range contains no markup. An element with any child element, comment, CDATA section or processing instruction fails with `CONFIG_SUBSTITUTION_PATH_AMBIGUOUS`, because replacing the range would delete markup the user did not address.
+9. `#text` on a self-closing element fails with `CONFIG_SUBSTITUTION_PATH_MISSING`. An empty expanded element such as `<x></x>` has a valid, zero-length text range.
+10. Generic paths may address content the shorthands deliberately skip, including entries nested inside `<location>`.
+
+#### 8.7.3 Replacement encoding
+
+Attribute targets are escaped per Section 8.2's rules, driven by the quote character observed at the target site. Text targets escape `&`, `<` and `>` only: quotes carry no structural meaning in element content, and escaping them would change bytes the user did not ask to change.
+
+#### 8.7.4 Rationale for failing on ambiguity
+
+Rules 4 and 8 are the load-bearing safety rules of this section. Both describe situations where a plausible answer exists — the first matching sibling; the text between the tags — and both refuse it. Silently choosing would make the result depend on document ordering or on markup the path does not mention, neither of which is visible in the path the user wrote. Preferring a failed build over a wrong substitution is the same trade-off Section 8.5 makes for source preservation.
 
 ## 9. Error and warning behavior
 ### 9.1 Configurable conditions
@@ -520,7 +585,7 @@ A `warn` setting never marks the build `UNSTABLE`. Teams requiring CI gating sha
 The following are structural, security, or programming errors and shall not be downgraded to warnings in Version 1.0:
 
 - malformed or unsupported path syntax;
-- unsupported XML path outside the two shorthands;
+- an ambiguous generic XML path (Section 8.7.2 rules 4 and 8);
 - malformed or unsupported XML/JSON;
 - unsupported or non-UTF-8 declared encoding;
 - JSON path resolving to a non-scalar;
@@ -938,7 +1003,7 @@ Warnings shall identify the relative file and path, but not values. Example:
 Errors shall be actionable and categorized, for example:
 
 - `CONFIG_SUBSTITUTION_PATH_SYNTAX`
-- `CONFIG_SUBSTITUTION_XML_PATH_UNSUPPORTED`
+- `CONFIG_SUBSTITUTION_XML_PATH_UNSUPPORTED` — retained in the enumeration for compatibility, but no longer reachable from a step invocation since Section 8.7 made every XML path either shorthand or generic
 - `CONFIG_SUBSTITUTION_TARGET_GROUP_OVERLAP`
 - `CONFIG_SUBSTITUTION_FILE_NOT_FOUND`
 - `CONFIG_SUBSTITUTION_PATH_MISSING`
@@ -1083,7 +1148,7 @@ The Version 1.0 release is acceptable only when all criteria below are automated
 6. **Selector disambiguation:** `appSettings.Foo.@value.@value` targets key `Foo.@value`, while `appSettings.@value` targets the literal key `@value`.
 7. **Credential substitution:** `appSettings.BankApi:Key` accepts a folder-scoped Secret Text credential and does not disclose its resolved value outside the intended target/temp file and process memory.
 8. **Connection-string attributes:** Both `@connectionString` and `@providerName` can be updated.
-9. **Generic XML exclusion:** A non-shorthand XML path fails clearly with `CONFIG_SUBSTITUTION_XML_PATH_UNSUPPORTED` before modification.
+9. **Shorthand precedence:** A path beginning `appSettings.` or `connectionStrings.` resolves through the shorthand regardless of document content, so every path valid under Version 0.7 keeps its Version 0.7 meaning.
 10. **JSON nesting:** `Logging.LogLevel.Default` resolves as three JSON object levels.
 11. **Quoted JSON key:** `Serilog.'MinimumLevel.Default'` resolves a literal dotted property name.
 12. **JSON arrays:** `Services[0].Url` updates the first array element using zero-based syntax.
@@ -1118,6 +1183,13 @@ The Version 1.0 release is acceptable only when all criteria below are automated
 41. **Link targets refused:** A symbolic link, junction or other reparse point is refused as a target even when it resolves inside the workspace; a link appearing as an intermediate path component is accepted provided the resolved path stays inside; a lexically innocent path that escapes through a junction is refused.
 42. **Cross-platform writability:** A read-only or otherwise unwritable target is refused with `CONFIG_SUBSTITUTION_WRITE_FAILED` on both Windows and POSIX, before any temporary file is created.
 43. **Ant glob semantics:** `**/name` matches a file at the workspace root as well as nested files; per-pattern match counts overlap within a group and do not sum to `filesMatched`.
+44. **Generic attribute path:** A generic path resolves an attribute no shorthand can address, including one nested arbitrarily deep and one inside `<location>`, and changes nothing else in the file.
+45. **Generic text path:** A generic `#text` path replaces an element's text, escaping `&`, `<` and `>` and leaving quote characters unescaped; an empty expanded element yields a valid zero-length range.
+46. **Occurrence indexes:** `[n]` selects the *n*-th same-name sibling in document order and leaves the others untouched; an index beyond the last sibling fails with `CONFIG_SUBSTITUTION_PATH_MISSING`.
+47. **Ambiguity is never resolved silently:** An unindexed step matching more than one sibling fails with `CONFIG_SUBSTITUTION_PATH_AMBIGUOUS` and is **not** downgraded by `missingPathBehavior: ignore`; the message names an indexed form that would disambiguate it, and the file is unchanged.
+48. **Mixed content refused:** `#text` on an element containing a child element, comment, CDATA section or processing instruction fails with `CONFIG_SUBSTITUTION_PATH_AMBIGUOUS` rather than overwriting the markup; `#text` on a self-closing element fails with `CONFIG_SUBSTITUTION_PATH_MISSING`.
+49. **Lexical name matching:** A prefixed element is matched only by its exact qualified name; the unprefixed form does not match it, and a step matches direct children only, never descendants.
+50. **Round-trippable diagnostics:** The canonical rendering of a parsed generic path re-parses to the same path, and a path-resolution failure names no current or replacement value.
 
 ## 19. Required implementation deliverables
 - Maven-based Jenkins plugin repository.
@@ -1163,7 +1235,8 @@ Version 1.0 consists of:
 - JSON nested, quoted-key, and array-index paths;
 - JSON automatic and explicit scalar typing;
 - XML `auto`/`string` typing only;
-- XML `appSettings` and `connectionStrings` shorthand only;
+- XML `appSettings` and `connectionStrings` shorthand;
+- generic XML element traversal with indexes, arbitrary attributes and `#text` (Section 8.7, added in 0.8);
 - Secret Text credentials;
 - `dryRun`;
 - `fail`, `warn`, and `ignore` policies at the step level;
@@ -1179,7 +1252,6 @@ Version 1.0 consists of:
 
 The following are deferred candidates and are not commitments until separately approved:
 
-- generic XML traversal, indexes, arbitrary attributes, and `#text`;
 - aggregation of disjoint substitution paths from overlapping target groups;
 - an explicit duplicate-path policy if override semantics are ever considered;
 - `requireEachPatternMatch`;

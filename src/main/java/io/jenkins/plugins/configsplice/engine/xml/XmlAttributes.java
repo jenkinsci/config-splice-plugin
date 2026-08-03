@@ -38,6 +38,28 @@ public final class XmlAttributes {
     }
 
     /**
+     * Escapes {@code value} for use as element text rather than as an attribute value.
+     *
+     * <p>Quotes are left alone: inside element content they carry no structural meaning, and escaping
+     * them would churn bytes for no reason. {@code &} and {@code <} must be escaped because they are
+     * never legal literally; {@code >} is escaped defensively so that no accidental {@code ]]>}
+     * sequence can form.
+     */
+    public static String encodeText(String value) {
+        StringBuilder out = new StringBuilder(value.length());
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            switch (c) {
+                case '&' -> out.append("&amp;");
+                case '<' -> out.append("&lt;");
+                case '>' -> out.append("&gt;");
+                default -> out.append(c);
+            }
+        }
+        return out.toString();
+    }
+
+    /**
      * Decodes the predefined XML entities and numeric character references.
      *
      * <p>Custom entities are not decoded: DTDs are disabled outright, so a document that defines one

@@ -27,6 +27,26 @@ public final class DotNetPathParser {
     }
 
     /**
+     * Reports whether {@code path} is claimed by one of the shorthands (SRS section 6.1 rule 2).
+     *
+     * <p>This is the single definition of the shorthand/generic boundary: callers route on it and
+     * {@link #parse(String)} claims a path on the same test, so the two cannot disagree about who
+     * owns a path. The decision is lexical — it reads only the path, never the document — so no file
+     * content can change how a path is interpreted.
+     */
+    public static boolean isShorthand(String path) {
+        if (path == null) {
+            return false;
+        }
+        for (DotNetPath.Collection collection : DotNetPath.Collection.values()) {
+            if (path.startsWith(collection.pathPrefix())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Parses an XML shorthand path.
      *
      * <p>Worked cases from SRS section 8.2:
@@ -53,7 +73,7 @@ public final class DotNetPathParser {
         }
         throw new SpliceException(
                 ErrorCode.XML_PATH_UNSUPPORTED,
-                "Version 1.0 supports only paths beginning with 'appSettings.' or 'connectionStrings.'");
+                "not a shorthand path; shorthand paths begin with 'appSettings.' or 'connectionStrings.'");
     }
 
     private static DotNetPath parseRemainder(DotNetPath.Collection collection, String remainder)

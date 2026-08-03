@@ -17,7 +17,10 @@ import io.jenkins.plugins.configsplice.engine.json.JsonStrings;
 import io.jenkins.plugins.configsplice.engine.xml.DotNetAttributeLocator;
 import io.jenkins.plugins.configsplice.engine.xml.DotNetPath;
 import io.jenkins.plugins.configsplice.engine.xml.DotNetPathParser;
+import io.jenkins.plugins.configsplice.engine.xml.GenericXmlLocator;
 import io.jenkins.plugins.configsplice.engine.xml.XmlAttributes;
+import io.jenkins.plugins.configsplice.engine.xml.XmlPath;
+import io.jenkins.plugins.configsplice.engine.xml.XmlPathParser;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -230,6 +233,23 @@ final class SubstitutionCallable implements ControllerToAgentFileCallable<HashMa
         return new Replacement(located.range(), JsonValues.serialise(substitution, located.kind()));
     }
 
+    /**
+     * Resolves an XML path, dispatching on its leading step (SRS section 6.1 rule 2).
+     *
+     * <p>A path beginning {@code appSettings.} or {@code connectionStrings.} is .NET shorthand, where
+     * the remainder is one literal key. Anything else is a generic element path starting at the
+     * document element.
+     *
+     * <p>The test is {@link DotNetPathParser#isShorthand} — the same predicate that parser uses to
+     * claim a path — so routing and parsing can never disagree about who owns a path. It is purely
+     * lexical and runs before the document is read, which is what guarantees that no file content can
+     * change how a path is interpreted.
+     *
+     * <p>The shorthand wins the prefix outright: in a document whose <em>own</em> document element is
+     * named {@code appSettings}, that element is not reachable generically. That is a deliberate
+     * trade for stable routing, and costs nothing on the .NET configuration files this addresses,
+     * whose document element is always {@code configuration}.
+     */
     private Replacement locateXml(String text, SubstitutionRequest.Sub substitution)
             throws SpliceException {
         if (!substitution.type.validForXml()) {
@@ -238,10 +258,20 @@ final class SubstitutionCallable implements ControllerToAgentFileCallable<HashMa
                     "path '" + substitution.path
                             + "' uses a type that does not apply to XML; only 'auto' and 'string' are valid");
         }
-        DotNetPath path = DotNetPathParser.parse(substitution.path);
-        DotNetAttributeLocator.Located located = DotNetAttributeLocator.locate(text, path);
         String plain = substitution.value == null ? "" : substitution.value.plainText();
-        return new Replacement(located.range(), XmlAttributes.encode(plain, located.quote()));
+
+        if (DotNetPathParser.isShorthand(substitution.path)) {
+            DotNetPath path = DotNetPathParser.parse(substitution.path);
+            DotNetAttributeLocator.Located located = DotNetAttributeLocator.locate(text, path);
+            return new Replacement(located.range(), XmlAttributes.encode(plain, located.quote()));
+        }
+
+        XmlPath path = XmlPathParser.parse(substitution.path);
+        GenericXmlLocator.Located located = GenericXmlLocator.locate(text, path);
+        String replacement = located.kind() == GenericXmlLocator.Located.Kind.TEXT
+                ? XmlAttributes.encodeText(plain)
+                : XmlAttributes.encode(plain, located.quote());
+        return new Replacement(located.range(), replacement);
     }
 
     /** Serialises a replacement as a JSON literal according to SRS sections 7.2 and 7.3. */
@@ -424,7 +454,23 @@ final class SubstitutionCallable implements ControllerToAgentFileCallable<HashMa
 
     // -------------------------------------------------------------------------------------
 
-    private record Replacement(SourceRange range, String text) {
+    /**
+     * A located range and the already-encoded text to put in it.
+     *
+     * <p>{@code text} is the replacement value, which for a credential-backed substitution is the
+     * secret in the clear. The generated record {@code toString()} would print it, so it is
+     * overridden to mask — the same rule {@link SplicePlan.Edit} follows, and the reason
+     * {@link ResolvedValue} exists. Nothing currently logs a {@code Replacement}; this is here so
+     * that adding a log line later cannot quietly turn into a disclosure.
+     *
+     * <p>Package-private rather than private only so {@code ValueMaskingTest} can assert the masking.
+     */
+    record Replacement(SourceRange range, String text) {
+
+        @Override
+        public String toString() {
+            return "Replacement[@" + range.start() + ".." + range.end() + ", text hidden]";
+        }
     }
 
     /** A file with its plan computed but not yet committed. */

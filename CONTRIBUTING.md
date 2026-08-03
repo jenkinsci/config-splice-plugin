@@ -36,8 +36,16 @@ future Freestyle adapter cheap. If you need Jenkins in the engine, the design is
 
 **Never let a replacement value reach a log, message or `toString()`.** Values are carried in
 `ResolvedValue`, whose `toString()` returns a fixed placeholder. `hudson.util.Secret` is *not* safe for
-this — its `toString()` returns the plaintext. Records are a specific hazard: the generated
-`toString()` prints every component, which is why `SplicePlan.Edit` overrides it.
+this — its `toString()` returns the plaintext.
+
+Records are a specific hazard: the generated `toString()` prints every component, and it comes back
+silently if someone regenerates the record or deletes an override that looks unused. Every type
+holding a value therefore overrides it — `SplicePlan.Edit`, `SubstitutionCallable.Replacement`, and
+both `Located` records — and `ValueMaskingTest` asserts each one, so removing a mask fails the build
+rather than arming a future log statement. If you add a type that carries a value, add it there too.
+
+This covers the value already in the file as well as the one replacing it: the reason to substitute a
+connection string is that the file holds one.
 
 **Third-party exceptions never reach the build log verbatim.** Jackson and StAX embed source excerpts
 in their messages, and a source excerpt from a file mid-substitution can contain a resolved credential.

@@ -19,6 +19,12 @@ problem, and has previously reported green while `verify` failed.
 The baseline is Jenkins **2.541.3** on **Java 17** — the newest LTS line that still supports Java 17,
 since 2.555.1 and later require Java 21.
 
+**Build on JDK 17 locally, even though CI cannot.** ci.jenkins.io accepts only JDK 21 and 25, so the
+suite is never *executed* on a Java 17 runtime; the parent POM pins `--release 17`, which makes CI's
+JDK 21 emit Java 17 bytecode, so compilation is covered and execution is not. Your local JDK 17 run is
+the only place the tests actually run on the runtime the baseline supports. It matters most for
+anything touching reflection, class loading or the module system.
+
 ### On Linux
 
 ```bash
@@ -58,9 +64,12 @@ preserve.
 
 | Platform | JDK | Why |
 |---|---|---|
-| linux | 17 | the minimum supported baseline |
-| windows | 17 | the same baseline, where file semantics differ |
-| linux | 21 | forward compatibility |
+| linux | 21 | the ordinary case |
+| windows | 21 | the same JDK, where file semantics differ |
+| linux | 25 | forward compatibility |
+
+The JDK versions are what ci.jenkins.io offers, not a choice — see the note under Building for why
+none of these legs proves anything about running on Java 17.
 
 **Windows is a required leg.** Two behaviours differ between platforms and would each have shipped as
 a defect had only one been tested: `Files.isSymbolicLink()` misses Windows directory junctions, and an
@@ -84,6 +93,7 @@ output, so the Windows and Linux legs can be compared directly after a change.
 
 ## Requirements specification
 
-[`requirements-v0.7.md`](requirements-v0.7.md) is the specification the implementation was built
-against. Version 0.7 amends four sections from measurements taken during implementation; Section 20
-records the decision-gate outcomes and Appendix C indexes the ADRs against the sections they support.
+[`requirements-v0.8.md`](requirements-v0.8.md) is the specification the implementation was built
+against. Version 0.7 amended four sections from measurements taken during implementation, and 0.8
+adds generic XML paths (Section 8.7); Section 20 records the decision-gate outcomes and Appendix C
+indexes the ADRs against the sections they support.
