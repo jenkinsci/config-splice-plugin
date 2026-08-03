@@ -105,10 +105,10 @@
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>plain-credentials</artifactId>
     </dependency>
-    <!-- SRS 14.2: JSON comes through jackson2-api, never a direct com.fasterxml.jackson dependency. -->
+    <!-- SRS 14.2: JSON comes through the Jackson API plugin, never a direct Jackson dependency. -->
     <dependency>
-      <groupId>org.jenkins-ci.plugins</groupId>
-      <artifactId>jackson2-api</artifactId>
+      <groupId>io.jenkins.plugins</groupId>
+      <artifactId>jackson3-api</artifactId>
     </dependency>
 
     <!-- Test only: gate 5 runs a real sandboxed Pipeline to prove the result map needs no

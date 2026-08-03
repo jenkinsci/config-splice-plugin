@@ -1,9 +1,5 @@
 package io.jenkins.plugins.configsplice.engine.json;
 
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.core.json.JsonReadFeature;
 import io.jenkins.plugins.configsplice.engine.ErrorCode;
 import io.jenkins.plugins.configsplice.engine.SourceRange;
 import io.jenkins.plugins.configsplice.engine.SpliceException;
@@ -13,6 +9,11 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
+import tools.jackson.core.json.JsonFactory;
+import tools.jackson.core.json.JsonReadFeature;
 
 /**
  * Locates the exact source range of a JSON scalar addressed by a {@link JsonPath}
@@ -104,7 +105,8 @@ public final class JsonScalarLocator {
             JsonToken token;
             while ((token = parser.nextToken()) != null) {
                 switch (token) {
-                    case FIELD_NAME -> {
+                    // Jackson 3 renamed FIELD_NAME to PROPERTY_NAME.
+                    case PROPERTY_NAME -> {
                         Frame top = stack.get(stack.size() - 1);
                         String name = parser.currentName();
                         if (!top.keys.add(name)) {
@@ -134,8 +136,13 @@ public final class JsonScalarLocator {
                     }
                 }
             }
-        } catch (IOException e) {
+        } catch (IOException | JacksonException e) {
             // Jackson messages embed source excerpts, which may contain a resolved secret.
+            //
+            // JacksonException is caught explicitly because Jackson 3 made its exceptions unchecked:
+            // a malformed document raises StreamReadException, which the compiler will not remind
+            // anyone to handle. Without this clause the raw parser message — quoting the offending
+            // source text — propagates straight to the build log.
             throw new SpliceException(ErrorCode.PARSE_FAILED, "file is not valid JSON", e);
         }
 

@@ -83,6 +83,35 @@ load-bearing for XML, which vindicates the SRS's refusal to assume parser offset
 | StAX offsets plus arithmetic to find attributes | Would depend on undocumented, implementation-specific behaviour of whichever StAX implementation the agent's JRE supplies. |
 | A hand-written XML parser used for validation too | Reimplements well-formedness and XXE defence that the JDK already provides and that is far better tested than anything written here. |
 
+## Jackson 3 migration (later addendum)
+
+The plugin moved from `jackson2-api` to `jackson3-api` (`io.jenkins.plugins:jackson3-api`, note the
+different groupId). Gate 1 was re-run as the acceptance criterion, since the whole design rests on
+Jackson's offsets being exact.
+
+**The finding holds.** `Gate1EvidenceTest` against Jackson 3 reports the same result as Jackson 2:
+
+```
+--> 0/14 cases needed a start adjustment; 0/14 had an inexact parser end offset.
+```
+
+Three API differences mattered:
+
+1. **Namespace.** `com.fasterxml.jackson.core.*` → `tools.jackson.core.*`, with `JsonFactory` and
+   `JsonReadFeature` moving into `tools.jackson.core.json`.
+2. **`JsonToken.FIELD_NAME` → `PROPERTY_NAME`.** A compile error, so it cannot be missed.
+3. **Exceptions became unchecked, and this one is dangerous.** Jackson 3 raises
+   `tools.jackson.core.exc.StreamReadException`, which extends `RuntimeException`. The existing
+   `catch (IOException e)` still compiled — the try-with-resources `close()` keeps it reachable — but
+   it no longer intercepted parse failures. A malformed document therefore propagated the raw Jackson
+   message, *which quotes the offending source text*, straight past the boundary that SRS section 12.5
+   exists to defend. `JsonScalarLocator` now catches `IOException | JacksonException`.
+
+Point 3 is the one worth remembering: **the compiler is no help when a library moves from checked to
+unchecked exceptions.** It was caught only because `JsonScalarLocatorTest.malformedJsonDoesNotLeakSourceText`
+asserts the exception *type* crossing the engine boundary rather than merely that parsing failed. That
+test is now the regression guard for any future Jackson upgrade.
+
 ## Verification
 
 `Gate1EvidenceTest`, `JsonScalarLocatorTest`, `DotNetAttributeLocatorTest`,

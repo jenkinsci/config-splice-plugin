@@ -869,9 +869,10 @@ The baseline shall be rechecked before Version 1.0 is released, because Jenkins 
   - `workflow-step-api`;
   - `credentials`;
   - `plain-credentials`;
-  - `jackson2-api`;
+  - `jackson3-api` (`io.jenkins.plugins`; note the groupId differs from the former `jackson2-api`);
   - supporting test dependencies from the plugin BOM.
-- Do not add a direct `com.fasterxml.jackson.*` library dependency when functionality is available through `jackson2-api`.
+- Do not add a direct `tools.jackson.*` library dependency when functionality is available through `jackson3-api`.
+- Jackson 3 raises **unchecked** exceptions (`tools.jackson.core.exc.StreamReadException` extends `RuntimeException`), so the compiler will not enforce Section 12.5's sanitization boundary. Every call into Jackson shall be enclosed by a catch of `JacksonException`, and a test shall assert the exception *type* that crosses the engine boundary rather than only that parsing failed.
 - Enable dependency and bundled-artifact checks supplied by the modern plugin parent where practical.
 - Configure Dependabot or Renovate for dependency updates.
 
