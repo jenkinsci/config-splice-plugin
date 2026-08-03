@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -112,7 +113,7 @@ class JsonPathTest {
 
         @Test
         void stepsAreDefensivelyCopied() {
-            java.util.ArrayList<JsonPath.Step> mutable = new java.util.ArrayList<>();
+            ArrayList<JsonPath.Step> mutable = new ArrayList<>();
             mutable.add(property("a"));
             JsonPath subject = new JsonPath(mutable);
 

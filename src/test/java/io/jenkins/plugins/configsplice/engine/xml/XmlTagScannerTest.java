@@ -1,6 +1,7 @@
 package io.jenkins.plugins.configsplice.engine.xml;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -155,7 +156,7 @@ class XmlTagScannerTest {
         void aMalformedMessageNamesTheProblemWithoutQuotingContent() {
             SpliceException thrown = assertThrows(
                     SpliceException.class, () -> scan("<add key=\"s3cr3t-token\" "));
-            org.junit.jupiter.api.Assertions.assertFalse(
+            assertFalse(
                     thrown.getMessage().contains("s3cr3t-token"),
                     "scanner diagnostics must not echo document content");
         }
