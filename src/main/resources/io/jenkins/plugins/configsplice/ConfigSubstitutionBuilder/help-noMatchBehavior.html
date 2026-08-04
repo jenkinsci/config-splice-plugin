@@ -1,0 +1,12 @@
+<div>
+  What to do when a target group's patterns collectively match no files.
+  <p>
+    <b>Fail the build</b> is the default and is usually what you want: a group matching nothing
+    almost always means a mistyped pattern or a build that did not produce the files yet.
+  </p>
+  <p>
+    This applies to the group as a whole. An individual pattern that matches nothing while other
+    patterns in the same group do match is reported as a note in the build log, but is not itself an
+    error.
+  </p>
+</div>
