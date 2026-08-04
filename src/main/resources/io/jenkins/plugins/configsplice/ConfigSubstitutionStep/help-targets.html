@@ -2,8 +2,12 @@
   One or more groups, each pairing a set of file patterns with the substitutions that apply
   <em>only</em> to those files.
   <p>
-    Grouping exists so that XML paths are never applied to JSON files and vice versa. In Version 1.0
-    a given file must be matched by exactly one group; overlapping groups are rejected during
-    validation, before any file is read or any credential resolved.
+    Grouping exists so that XML paths are never applied to JSON files and vice versa. A given file
+    must be matched by exactly one group; overlapping groups are rejected during file discovery,
+    before any file is read or modified.
+  </p>
+  <p>
+    Credentials are resolved before that, on the controller, so a run that fails because two groups
+    claim the same file has already looked up and resolved the credentials it was configured with.
   </p>
 </div>

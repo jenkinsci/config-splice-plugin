@@ -394,6 +394,38 @@ class FreestyleBuildStepTest {
         }
 
         @Test
+        @DisplayName("credentials are resolved before overlap is detected, as the inline help says")
+        void credentialsResolveBeforeOverlapIsDetected(JenkinsRule j) throws Exception {
+            // help-targets.html tells users when each failure happens relative to credential lookup.
+            // It previously claimed overlap was caught "before any credential resolved", which was
+            // wrong: resolution is controller-side and overlap is agent-side, so the order is the
+            // reverse. Pinned here so the corrected wording cannot quietly drift again.
+            Substitution substitution = new Substitution("ApiKey");
+            substitution.setCredentialsId("missing-credential");
+
+            TargetGroup first = new TargetGroup(List.of("appsettings.json"), List.of(substitution));
+            first.setFormat("json");
+            TargetGroup second = new TargetGroup(List.of("appsettings.json"), List.of(substitution));
+            second.setFormat("json");
+
+            FreeStyleProject project = j.createFreeStyleProject();
+            project.getBuildersList().add(writesAppSettings());
+            project.getBuildersList().add(new ConfigSubstitutionBuilder(List.of(first, second)));
+
+            FreeStyleBuild build = j.assertBuildStatus(Result.FAILURE, project.scheduleBuild2(0));
+            String log = JenkinsRule.getLog(build);
+
+            // Both groups claim the same file, so overlap would be the failure if it came first.
+            // Credential resolution reports first, which is what proves the ordering.
+            assertTrue(
+                    log.contains("CONFIG_SUBSTITUTION_CREDENTIAL_UNAVAILABLE"),
+                    "credential resolution must happen first: " + log);
+            assertFalse(
+                    log.contains("CONFIG_SUBSTITUTION_TARGET_GROUP_OVERLAP"),
+                    "overlap is only reached after credentials resolve: " + log);
+        }
+
+        @Test
         @DisplayName("a credential reaches the file and nothing else")
         void credentialDoesNotLeak(JenkinsRule j) throws Exception {
             SystemCredentialsProvider.getInstance()
