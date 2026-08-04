@@ -7,6 +7,7 @@ import io.jenkins.plugins.configsplice.engine.SourceRange;
 import io.jenkins.plugins.configsplice.engine.SplicePlan;
 import io.jenkins.plugins.configsplice.engine.xml.DotNetAttributeLocator;
 import io.jenkins.plugins.configsplice.engine.xml.GenericXmlLocator;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -55,6 +56,23 @@ class ValueMaskingTest {
                 "GenericXmlLocator.Located",
                 new GenericXmlLocator.Located(
                         new SourceRange(3, 9), GenericXmlLocator.Located.Kind.ATTRIBUTE, '"', SENTINEL));
+    }
+
+    @Test
+    @DisplayName("the configuration carrier does not print the values it can reach")
+    void configurationMasksItsTargets() {
+        // Configuration reaches Substitution.getValue(), which may be a hard-coded literal secret.
+        // Today the nested types have no toString() of their own, so a generated one would print
+        // identity hashes -- but that is a property of those classes, not a guarantee, and this is
+        // the type that would start printing values the day one of them gains a toString().
+        Substitution substitution = new Substitution("ApiKey");
+        substitution.setValue(SENTINEL);
+        TargetGroup group = new TargetGroup(List.of("appsettings.json"), List.of(substitution));
+
+        assertMasks(
+                "SubstitutionRunner.Configuration",
+                new SubstitutionRunner.Configuration(
+                        List.of(group), false, "fail", "fail", false));
     }
 
     @Test

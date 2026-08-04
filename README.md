@@ -1,7 +1,8 @@
 # Config Splice
 
-Replaces **existing** values in JSON and .NET XML configuration files from a Jenkins Pipeline —
-`appsettings.json` and `web.config` — preserving every byte it was not asked to change.
+Replaces **existing** values in JSON and .NET XML configuration files from a Jenkins Pipeline or a
+Freestyle job — `appsettings.json` and `web.config` — preserving every byte it was not asked to
+change.
 
 Comments, indentation, key order, attribute order, quote style, BOM state and line endings all
 survive. Only the target value's own bytes change.
@@ -33,6 +34,22 @@ configSubstitution(
 
 Groups pair file patterns with the substitutions that apply **only** to those files, so XML paths are
 never applied to JSON files.
+
+## Freestyle
+
+The same thing is available as a build step: **Add build step → Substitute values in JSON and .NET XML
+configuration files**. It takes the same target groups, substitutions and options as the Pipeline step,
+and produces byte-identical output.
+
+The one difference is that a Freestyle build step cannot return a value, so there is no result map to
+read. The counts still appear in the build log:
+
+```
+[configSubstitution] Changed 2 file(s); 1 unchanged; 0 warning(s).
+```
+
+Because of that, `missingPathBehavior: warn` has nothing to inspect afterwards on this surface — use
+**Fail the build** if the build needs to react.
 
 ## Property paths
 
@@ -205,7 +222,8 @@ per-pattern and per-substitution records. The result contains no values and no c
 - **A deliberately empty string is not expressible.** A blank value means "not supplied".
 - **Windows ACLs are inherited, not copied.** A replaced file inherits its directory's ACL. Explicit,
   non-inherited entries set directly on a configuration file are not carried across.
-- **Pipeline only.** No Freestyle build step in this release.
+- **The result map is Pipeline-only.** The Freestyle build step performs identically but returns
+  nothing, so its counts are available in the log rather than programmatically.
 - Files are expected to be at most a few MiB.
 
 ## Documentation

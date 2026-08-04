@@ -1,5 +1,6 @@
 package io.jenkins.plugins.configsplice;
 
+import hudson.AbortException;
 import hudson.Util;
 import hudson.remoting.VirtualChannel;
 import io.jenkins.plugins.configsplice.engine.AtomicFileWriter;
@@ -95,8 +96,11 @@ final class SubstitutionCallable implements ControllerToAgentFileCallable<HashMa
         try {
             return run(workspaceDir.toPath());
         } catch (SpliceException e) {
-            // Cross the channel as a plain IOException carrying an already value-free message.
-            throw new IOException(e.getMessage());
+            // AbortException is an IOException, so this still crosses the channel unchanged, but both
+            // surfaces treat it as a clean failure: the already value-free message is shown on its
+            // own, with no stack trace. The cause is dropped deliberately -- a cause chain is exactly
+            // where a source excerpt the message withholds could resurface.
+            throw new AbortException(e.getMessage());
         }
     }
 

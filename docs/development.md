@@ -42,16 +42,24 @@ drops. Note that `sudo ./file` on a non-executable file reports a misleading `co
 ## Architecture
 
 The `engine` package tree has **no Jenkins imports**, and must keep it that way. That is what lets the
-bulk of the suite run in milliseconds without a Jenkins harness, and what keeps a future Freestyle
-adapter cheap.
+bulk of the suite run in milliseconds without a Jenkins harness, and it is what made the Freestyle
+adapter cheap when it was finally added — the whole build step is form binding plus one delegating
+call.
 
 ```
 io.jenkins.plugins.configsplice
 ├── engine/         format-agnostic: source model, ranges, splice planning, encoding, confinement
 │   ├── json/       JSON path grammar and scalar location
-│   └── xml/        .NET shorthand grammar and attribute location
-└── (step layer)    Jenkins-facing: the step, credentials, remoting, result map
+│   └── xml/        shorthand + generic path grammars and range location
+└── (step layer)    Jenkins-facing: the two build surfaces, credentials, remoting, result map
 ```
+
+**Two surfaces, one code path.** `ConfigSubstitutionStep` (Pipeline) and `ConfigSubstitutionBuilder`
+(Freestyle) do nothing but bind configuration and delegate to `SubstitutionRunner`. Only the bean
+plumbing is duplicated, because that is UI surface and sharing it would complicate both `config.jelly`
+files; every behaviour — validation, credential resolution, the lifecycle notice, logging — exists
+once. Credential resolution in particular carries the rule that an inaccessible credential is
+reported identically to an absent one, and a second copy is how one copy would eventually lose it.
 
 The central design choice is **locate-then-splice**: parse only to understand the document, then
 replace the exact source range of the target scalar. Reading into a tree and writing back would
@@ -93,7 +101,7 @@ output, so the Windows and Linux legs can be compared directly after a change.
 
 ## Requirements specification
 
-[`requirements-v0.8.md`](requirements-v0.8.md) is the specification the implementation was built
-against. Version 0.7 amended four sections from measurements taken during implementation, and 0.8
-adds generic XML paths (Section 8.7); Section 20 records the decision-gate outcomes and Appendix C
-indexes the ADRs against the sections they support.
+[`requirements-v0.9.md`](requirements-v0.9.md) is the specification the implementation was built
+against. Version 0.7 amended four sections from measurements taken during implementation, 0.8 adds
+generic XML paths (Section 8.7) and 0.9 adds the Freestyle build step (Section 4.7); Section 20
+records the decision-gate outcomes and Appendix C indexes the ADRs against the sections they support.

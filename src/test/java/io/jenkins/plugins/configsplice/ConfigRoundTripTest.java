@@ -171,6 +171,19 @@ class ConfigRoundTripTest {
                 values(stepDescriptor.doFillMissingPathBehaviorItems(null)),
                 "missing-path policy options");
 
+        // The Freestyle descriptor carries its own copy of these endpoints, so it gets its own
+        // assertions: a copy that drifts is the whole risk of having two surfaces.
+        ConfigSubstitutionBuilder.DescriptorImpl builderDescriptor =
+                j.jenkins.getDescriptorByType(ConfigSubstitutionBuilder.DescriptorImpl.class);
+        assertEquals(
+                List.of("fail", "warn", "ignore"),
+                values(builderDescriptor.doFillNoMatchBehaviorItems(null)),
+                "no-match policy options must match the Pipeline surface");
+        assertEquals(
+                List.of("fail", "warn", "ignore"),
+                values(builderDescriptor.doFillMissingPathBehaviorItems(null)),
+                "missing-path policy options must match the Pipeline surface");
+
         TargetGroup.DescriptorImpl groupDescriptor =
                 j.jenkins.getDescriptorByType(TargetGroup.DescriptorImpl.class);
         assertEquals(List.of("auto", "json", "xml"), values(groupDescriptor.doFillFormatItems(null)));
@@ -222,6 +235,19 @@ class ConfigRoundTripTest {
                     AccessDeniedException.class,
                     () -> groups.doFillFormatItems(null),
                     "doFillFormatItems must refuse an unauthorised caller");
+
+            // Same endpoints again on the Freestyle descriptor. They are a separate copy of the
+            // permission check, and an unchecked copy is exactly as exploitable as no check.
+            ConfigSubstitutionBuilder.DescriptorImpl builder =
+                    j.jenkins.getDescriptorByType(ConfigSubstitutionBuilder.DescriptorImpl.class);
+            assertThrows(
+                    AccessDeniedException.class,
+                    () -> builder.doFillNoMatchBehaviorItems(null),
+                    "the Freestyle doFillNoMatchBehaviorItems must refuse an unauthorised caller");
+            assertThrows(
+                    AccessDeniedException.class,
+                    () -> builder.doFillMissingPathBehaviorItems(null),
+                    "the Freestyle doFillMissingPathBehaviorItems must refuse an unauthorised caller");
         }
     }
 

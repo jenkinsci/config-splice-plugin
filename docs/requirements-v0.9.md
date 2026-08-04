@@ -1,11 +1,27 @@
 # Software Requirements Specification
 ## Jenkins Configuration Property Substitution Plugin
 
-**Version:** 0.8  
-**Status:** Released baseline, extended with generic XML paths  
+**Version:** 0.9  
+**Status:** Released baseline, extended with generic XML paths and a Freestyle surface  
 **Date:** August 3, 2026  
-**Supersedes:** Version 0.7  
+**Supersedes:** Version 0.8  
 
+> **What changed in 0.9.** One **scope addition**: Freestyle support through a `SimpleBuildStep`
+> adapter, listed as a Version 1.1 candidate in §21.2, is now implemented.
+>
+> | Change | Sections |
+> |---|---|
+> | Freestyle build step: surface, parameters, parity and failure reporting (new) | §4.7 |
+> | Pipeline step no longer described as the only interface | §4.2 |
+> | Agent-side failures cross the channel as `AbortException` (new) | §12.5.2 |
+> | Acceptance criteria 51–56 added | §18 |
+> | Moved from V1.1 candidates into delivered scope | §21.1, §21.2 |
+>
+> The Freestyle step is an **adapter, not a second implementation**: both surfaces bind the same
+> `Describable` models and execute the same controller-side code path, so no behaviour is specified
+> twice. The Pipeline step is unchanged, and every Pipeline job valid under 0.8 keeps its exact 0.8
+> meaning.
+>
 > **What changed in 0.8.** Version 1.0 shipped as `11.v2c4a_4cb_cc6d5` against the 0.7 baseline. This
 > version records one **scope addition**: generic XML element traversal, deferred in 0.4 and listed as
 > a Version 1.1 candidate in §21.2, is now implemented.
@@ -167,7 +183,7 @@ The two target groups are intentionally separate. A substitution is never applie
 - `@Symbol` is not required to name this custom `Step` and shall not be relied on for step resolution.
 - Required context: `Run`, `FilePath`, and `TaskListener`
 - Return type: `Map<String, Object>` containing only nested maps, lists, strings, booleans, integers, and null; the result is value-free, CPS-serializable, JEP-200-safe, and consumable in a sandboxed Pipeline without administrator approval
-- Version 1.0 interface: native Pipeline step only
+- This is the only surface that returns the result map. The Freestyle build step of §4.7 cannot, because `SimpleBuildStep.perform` is `void`.
 
 The nested target-group and substitution models are concrete `Describable` types bound by their fields. They do not require symbols for the documented map syntax.
 
@@ -220,6 +236,31 @@ The step shall reject before file modification:
 - absolute paths or paths outside the workspace.
 
 Duplicate-path comparison is case-sensitive and performed after parsing the path to its canonical representation. Invalid XML types shall fail with `CONFIG_SUBSTITUTION_TYPE_INVALID` before credential resolution or file modification. Same-file multi-group ownership is an agent-side discovery validation governed by Section 5.3, not a bind-time parameter check. Override-by-later-group is explicitly unsupported in Version 1.0.
+
+### 4.7 Freestyle build step
+
+The plugin shall additionally provide a Freestyle build step implementing `SimpleBuildStep`.
+
+#### 4.7.1 Surface
+
+1. The build step shall be applicable to all `AbstractProject` job types and shall appear in the **Add build step** menu.
+2. It shall expose exactly the parameters of Sections 4.3 to 4.5, bound from a form rather than from a Groovy map, and shall apply the same validation as Section 4.6.
+3. It shall carry **no `@Symbol`**. Pipeline users are served by the step of Section 4.2, which returns the result map; publishing a symbol would offer Pipeline a second entry point that silently lacks that return value. Reachability through the legacy `step([$class: …])` form is an unavoidable property of `SimpleBuildStep` and is not a documented interface.
+4. It shall require a workspace and shall obtain `Run`, `FilePath` and `TaskListener` from the build.
+
+#### 4.7.2 Parity
+
+Both surfaces shall execute the same controller-side code path — validation, credential resolution, the lifecycle notice of Section 12.6, dispatch to the agent, log replay and the summary line. This is a **requirement, not an implementation note**: credential resolution carries the rule of Section 12.1 that lookup fails generically and never reveals whether an unauthorized credential ID exists, and a second copy of that logic is how one copy would lose the rule.
+
+Given identical configuration and identical input files, the two surfaces shall produce **byte-identical output**.
+
+#### 4.7.3 Result reporting
+
+The Freestyle step discards the result map of Section 11.2, having nowhere to return it. The counts it carries shall still reach the user through the build log of Section 15.1, which is the only channel a Freestyle job has. `missingPathBehavior: warn` therefore has no programmatic consumer on this surface, and the inline help shall say so.
+
+#### 4.7.4 Failure reporting
+
+A failure shall abort the build with the value-free message of Section 15 and **no stack trace**. Agent-side failures already cross the channel as `AbortException` (Section 12.5); controller-side failures shall be converted to one. A stack trace is both noise and a place where a cause chain could surface a source excerpt the message deliberately withholds.
 
 ## 5. File discovery and format selection
 ### 5.1 Glob behavior
@@ -817,6 +858,13 @@ Requirements:
 2. No type that holds a replacement value, including intermediate planning structures, may expose that value through a generated or default `toString()`. Java records are a specific hazard here: the compiler-generated `toString()` prints every component.
 3. A test shall assert the masking behavior of the carrier type directly, independently of build-log assertions.
 
+#### 12.5.2 Crossing the agent channel
+
+A failure raised on the agent shall reach the controller as an `AbortException` carrying the already value-free message and **no cause**. Two properties follow, and both are required:
+
+1. Jenkins prints an `AbortException` as its message alone, with no stack trace, on every surface. This is what makes Section 4.7.4 achievable without per-surface handling.
+2. Dropping the cause is deliberate. A cause chain is precisely where a parser message — which may embed a source excerpt, and therefore a resolved credential — would resurface after this section took care to exclude it.
+
 ### 12.6 Secret lifecycle after substitution
 
 Credential substitution changes the workspace file into secret-bearing material. The plugin cannot prevent later Pipeline steps from copying that file into longer-lived storage.
@@ -1190,6 +1238,12 @@ The Version 1.0 release is acceptable only when all criteria below are automated
 48. **Mixed content refused:** `#text` on an element containing a child element, comment, CDATA section or processing instruction fails with `CONFIG_SUBSTITUTION_PATH_AMBIGUOUS` rather than overwriting the markup; `#text` on a self-closing element fails with `CONFIG_SUBSTITUTION_PATH_MISSING`.
 49. **Lexical name matching:** A prefixed element is matched only by its exact qualified name; the unprefixed form does not match it, and a step matches direct children only, never descendants.
 50. **Round-trippable diagnostics:** The canonical rendering of a parsed generic path re-parses to the same path, and a path-resolution failure names no current or replacement value.
+51. **Freestyle availability:** The build step is offered for Freestyle projects and appears in the **Add build step** menu.
+52. **Freestyle form binding:** Every parameter of Sections 4.3 to 4.5, including the `List<String>` glob field and nested substitutions, survives a real form round trip.
+53. **Surface parity:** Given identical configuration and identical input, the Freestyle step and the Pipeline step produce byte-identical output.
+54. **Freestyle failure reporting:** A failing substitution aborts the build with the value-free message and prints no stack trace.
+55. **Freestyle secret handling:** A credential-backed substitution reaches the target file and appears in neither the build log nor the persisted build XML, and the lifecycle notice of Section 12.6 is printed on this surface too.
+56. **No second Pipeline surface:** The Freestyle build step publishes no `@Symbol`.
 
 ## 19. Required implementation deliverables
 - Maven-based Jenkins plugin repository.
@@ -1246,7 +1300,8 @@ Version 1.0 consists of:
 - workspace confinement and link defenses;
 - SHA-256 source-change detection;
 - a sandbox-safe result Map;
-- sanitized errors and mandatory secret-leak tests.
+- sanitized errors and mandatory secret-leak tests;
+- Freestyle support through a `SimpleBuildStep` adapter (Section 4.7, added in 0.9).
 
 ### 21.2 Candidate Version 1.1 scope
 
@@ -1256,8 +1311,7 @@ The following are deferred candidates and are not commitments until separately a
 - an explicit duplicate-path policy if override semantics are ever considered;
 - `requireEachPatternMatch`;
 - per-target-group `noMatchBehavior` and `missingPathBehavior` overrides;
-- carefully bounded support for additional encodings based on real repository evidence;
-- Freestyle support through a `SimpleBuildStep` adapter.
+- carefully bounded support for additional encodings based on real repository evidence.
 
 ### 21.3 Product-learning objective
 
