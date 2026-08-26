@@ -91,7 +91,7 @@ public final class DotNetAttributeLocator {
         if (matches.isEmpty()) {
             throw new SpliceException(
                     ErrorCode.PATH_MISSING,
-                    "no <add> element matches " + path.equivalentXPath());
+                    "no <add> element matches " + path.equivalentXPath() + fragmentHint(tags, path));
         }
         if (matches.size() > 1) {
             // Ambiguity is fatal by design: .NET itself takes the last entry, but silently picking
@@ -152,6 +152,35 @@ public final class DotNetAttributeLocator {
                     "the available XML parser cannot disable '" + property + "'; refusing to parse",
                     e);
         }
+    }
+
+    /**
+     * Explains the one near miss that {@link DotNetPath#equivalentXPath()} alone makes unreadable.
+     *
+     * <p>A shorthand only ever matches inside a {@code <configuration>} document (rule 1 above). A
+     * {@code configSource} fragment — the standard way to keep a connection string out of source
+     * control — has the collection itself as its document element, so every shorthand path misses it.
+     * The bare message then names the entry, which is the one part that is not wrong, and nothing in
+     * it hints that the file's shape is the problem. Naming the actual document element, and the
+     * generic path that does reach it, turns a long hunt into a one-line diagnosis.
+     *
+     * <p>An element name is structure rather than content: unlike an attribute value, it cannot hold
+     * the credential this file exists to carry.
+     */
+    private static String fragmentHint(List<XmlTagScanner.Tag> tags, DotNetPath path) {
+        for (XmlTagScanner.Tag tag : tags) {
+            if (tag.kind() == XmlTagScanner.Kind.CLOSE) {
+                continue;
+            }
+            if (ROOT_ELEMENT.equals(tag.name())) {
+                return "";
+            }
+            return "; this file's document element is <" + tag.name() + "> rather than <" + ROOT_ELEMENT
+                    + ">, so the shorthands do not address it. Reach it with a generic path, quoting"
+                    + " the first step so that it is not read as a shorthand: '" + tag.name()
+                    + "'.add.@" + path.attribute();
+        }
+        return ""; // Unreachable: the StAX pass above rejects a document with no elements.
     }
 
     private static boolean isDirectChildOfCollection(Deque<String> openElements, DotNetPath path) {

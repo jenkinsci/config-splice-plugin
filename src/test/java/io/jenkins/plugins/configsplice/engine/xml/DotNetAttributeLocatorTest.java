@@ -3,6 +3,7 @@ package io.jenkins.plugins.configsplice.engine.xml;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.jenkins.plugins.configsplice.engine.ErrorCode;
 import io.jenkins.plugins.configsplice.engine.ExactPreservationOracle;
@@ -187,6 +188,49 @@ class DotNetAttributeLocatorTest {
             assertFalse(
                     thrown.getMessage().contains("s3cr3t-token"),
                     "parser messages must never reach the caller verbatim");
+        }
+
+        @Test
+        @DisplayName("a configSource fragment is diagnosed as a shape problem, not a naming one")
+        void aFragmentRootedAtTheCollectionExplainsItself() throws Exception {
+            // Keeping a connection string out of source control via
+            // <connectionStrings configSource="local.config" /> is standard .NET practice, and the
+            // fragment's own document element is the collection. Every shorthand misses it, and the
+            // equivalent XPath in the message points at the entry name -- the one part that is right.
+            // Both halves of the corrected message are pinned: the cause, and a path that works.
+            String fragment = "<connectionStrings>"
+                    + "<add name=\"MySql\" connectionString=\"CHANGE_THIS\""
+                    + " providerName=\"MySql.Data.MySqlClient\" />"
+                    + "</connectionStrings>";
+            SpliceException thrown = assertThrows(
+                    SpliceException.class,
+                    () -> DotNetAttributeLocator.locate(
+                            fragment, DotNetPathParser.parse("connectionStrings.MySql.@connectionString")));
+
+            assertEquals(ErrorCode.PATH_MISSING, thrown.code());
+            assertTrue(
+                    thrown.getMessage().contains("document element is <connectionStrings>"),
+                    "the message must name the real cause: " + thrown.getMessage());
+            assertTrue(
+                    thrown.getMessage().contains("'connectionStrings'.add.@connectionString"),
+                    "the message must offer the path that works: " + thrown.getMessage());
+
+            // A suggestion that does not resolve would be worse than no suggestion at all.
+            assertEquals(
+                    "CHANGE_THIS",
+                    GenericXmlLocator.locate(
+                                    fragment, XmlPathParser.parse("'connectionStrings'.add.@connectionString"))
+                            .decodedValue());
+        }
+
+        @Test
+        void aMissMeetingTheDocumentShapeCarriesNoFragmentHint() {
+            // The hint must stay silent when the shape is right and the entry simply is not there,
+            // or it sends the reader off to fix something that was never wrong.
+            SpliceException thrown =
+                    assertThrows(SpliceException.class, () -> locate("connectionStrings.Absent"));
+            assertEquals(ErrorCode.PATH_MISSING, thrown.code());
+            assertFalse(thrown.getMessage().contains("document element"), thrown.getMessage());
         }
 
         @Test

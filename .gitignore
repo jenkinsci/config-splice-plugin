@@ -3,7 +3,8 @@ work/
 *.hpi
 *.jpi
 
-# Toolchain fetched by scripts/run-gates-linux.sh when the system Maven is too old.
+# Toolchain fetched by scripts/run-gates-linux.sh and scripts/run-gates-windows.ps1 when the system
+# Maven is missing or too old.
 .tools/
 
 # IDE
