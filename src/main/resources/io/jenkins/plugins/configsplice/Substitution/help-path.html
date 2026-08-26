@@ -15,7 +15,8 @@
   </ul>
   <p>
     Matching is exact and case-sensitive. Only entries directly inside the top-level
-    <code>appSettings</code> or <code>connectionStrings</code> element are considered; entries inside
+    <code>appSettings</code> or <code>connectionStrings</code> element of a complete
+    <code>&lt;configuration&gt;</code> document are considered; entries inside
     <code>&lt;location&gt;</code> and external files referenced by <code>file=</code> are not.
   </p>
   <p>
@@ -31,6 +32,26 @@
     <li><code>configuration.location.'system.web'.authorization.deny.@users</code> - content inside
       <code>&lt;location&gt;</code>, which the shorthands do not reach</li>
   </ul>
+  <p>
+    A generic path is also how you reach a fragment file. Moving connection strings into a separate
+    file with <code>&lt;connectionStrings configSource="local.config" /&gt;</code> is standard .NET
+    practice, and that fragment has the collection as its own document element rather than
+    <code>&lt;configuration&gt;</code>, so no shorthand matches it. Quote the first step so that the
+    path is not read as a shorthand:
+  </p>
+  <ul>
+    <li><code>connectionStrings.MySql.@connectionString</code> - the entry in a whole
+      <code>web.config</code></li>
+    <li><code>'connectionStrings'.add.@connectionString</code> - the same entry once it has been moved
+      into the fragment file</li>
+  </ul>
+  <p>
+    The quotes say nothing about the name; they exist only to stop the path <em>beginning</em> with
+    the text <code>connectionStrings.</code>, which is what selects the shorthand. Note that a generic
+    step matches on element name alone, so <code>add</code> means "the <code>&lt;add&gt;</code> child"
+    rather than "the one named MySql" - with a second entry in the file the path becomes ambiguous
+    and needs a positional index.
+  </p>
   <p>
     Element names match exactly as written, namespace prefix included. If a step matches more than one
     sibling and carries no index, the build fails rather than guessing which one you meant - add

@@ -13,8 +13,22 @@ mvn clean verify    # the full build: tests, SpotBugs, HPI packaging
 mvn hpi:run         # a local Jenkins with the plugin loaded, on http://localhost:8080/jenkins
 ```
 
-On Linux, `bash scripts/run-gates-linux.sh` runs the same build and prints the per-platform decision
-gate evidence. It fetches a suitable Maven into `.tools/` if the system one is too old.
+There is a gate script for each platform. Both run the same build, print the per-platform decision
+gate evidence, and fetch a suitable Maven into `.tools/` if the system one is missing or too old — so
+neither needs anything installed beyond a JDK:
+
+```bash
+bash scripts/run-gates-linux.sh          # Linux
+```
+```powershell
+.\scripts\run-gates-windows.ps1          # Windows, no elevation required
+```
+
+The Windows script picks a JDK that ci.jenkins.io also runs (17, 21 or 25) in preference to whatever
+`JAVA_HOME` points at, and warns up front about the two local conditions that change what the
+evidence means: Developer Mode being off, which makes the gate 3 symlink probes inconclusive, and an
+orphaned test JVM holding a handle on `target/`, which makes `clean` fail for a reason its own error
+message does not mention.
 
 ## Before you open a pull request
 
@@ -22,11 +36,11 @@ gate evidence. It fetches a suitable Maven into `.tools/` if the system one is t
 packaging all bind to `verify`. Every one of them has caught a defect that `mvn test` reported as
 green — two null-dereference paths and a packaging failure. A green `mvn test` is not evidence.
 
-**Run it on Windows and Linux if you touched file handling.** The two platforms genuinely differ:
-`Files.isSymbolicLink()` returns false for a Windows directory junction, and an open file handle
-blocks replacement on Windows but not on Linux. Both differences were found by testing on both, and
-either would have shipped as a defect otherwise. CI covers this, but knowing before you push is
-cheaper.
+**Run it on Windows and Linux if you touched file handling**, using the two gate scripts above. The
+platforms genuinely differ: `Files.isSymbolicLink()` returns false for a Windows directory junction,
+and an open file handle blocks replacement on Windows but not on Linux. Both differences were found
+by testing on both, and either would have shipped as a defect otherwise. CI covers this, but knowing
+before you push is cheaper.
 
 ## Conventions that are not negotiable
 
@@ -75,6 +89,42 @@ worth reading before changing the corresponding code:
 
 Do not open a public issue. Follow the
 [Jenkins security reporting process](https://www.jenkins.io/security/reporting/).
+
+## Handling a security report
+
+For maintainers. The process itself is
+[Jenkins security for maintainers](https://www.jenkins.io/security/for-maintainers/); what follows is
+only the part of it that interacts badly with how *this* repository is wired.
+
+**Never merge a security fix to `main` as an ordinary pull request.** Continuous delivery is enabled
+(`.github/workflows/cd.yaml`), so a merge to `main` releases automatically. For a normal change that
+is the point. For an embargoed fix it publishes the source of the fix *and* a released artifact
+containing it before the advisory exists — the embargo broken by our own automation, with no step
+along the way where anyone is asked to confirm.
+
+Develop the fix in the private `jenkinsci-cert` repository the security team provides, and stage it
+with `release:stage`. Never `release:perform`, which uploads publicly.
+
+**Keep the fix minimal.** No refactoring, no reformatting, no tidying of adjacent code, no old TODOs.
+This cuts against the habits the rest of this file encourages, deliberately: an embargoed fix is
+reviewed under time pressure by people who did not write the surrounding code, and every unrelated
+hunk is one more thing they have to rule out. Do the tidying weeks before or after, in its own change.
+
+**Merge with `git merge --squash`, not the GitHub UI**, which leaves a reference to the private pull
+request. The commit message carries the issue ID and nothing else:
+
+```
+[SECURITY-12345]
+```
+
+Credit whoever wrote the fix with git's `--author`.
+
+**Nothing becomes public before the advisory does** — not the branch, not the release, not the
+release notes, not the documentation. Run the full build even when the merge is clean.
+
+**Tell the security team if you stop maintaining this plugin**, and keep the notification address on
+your Jira account current. Advisories are published with or without a fix, and an unreachable
+maintainer only decides which of the two it is.
 
 ## Code of Conduct
 

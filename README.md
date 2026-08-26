@@ -96,6 +96,35 @@ generic path. Three rules are worth knowing:
   `[n]`, the build fails instead of silently picking the first — document order is not something you
   should have to reason about. Add `[0]`, `[1]`, … to choose.
 
+**A `configSource` fragment needs a generic path.** Splitting connection strings into a separate,
+ungitted file is standard .NET practice:
+
+```xml
+<!-- Web.config -->        <!-- local.config -->
+<connectionStrings         <connectionStrings>
+  configSource=              <add name="MySql" connectionString="CHANGE_THIS"
+    "local.config" />             providerName="MySql.Data.MySqlClient" />
+                           </connectionStrings>
+```
+
+The fragment's own document element is the collection, not `configuration`, and the shorthands are
+defined against a `configuration`-rooted document. So the same connection string is addressed
+differently depending on which file it lives in:
+
+| File | Path |
+|---|---|
+| `Web.config` | `connectionStrings.MySql.@connectionString` |
+| `local.config` | `'connectionStrings'.add.@connectionString` |
+
+The quotes say nothing about the name — `connectionStrings` contains no dots. They exist only to stop
+the path *beginning* with the text `connectionStrings.`, which is what selects the shorthand. Applying
+a shorthand to a fragment fails with a `PATH_MISSING` that names the document element it actually
+found and the generic path to use instead.
+
+Mind the second difference: a generic step matches on element name alone, so `add` means "the `<add>`
+child", not "the one named MySql". With one entry that is fine. Add a second and the path becomes
+ambiguous and needs a positional `add[0]`, which depends on document order.
+
 Absent elements and attributes are treated as missing paths and are **never created**. `#text` works
 only where the element contains text and nothing else; an element holding child elements, comments or
 CDATA is reported as ambiguous rather than having its markup overwritten.
@@ -184,6 +213,28 @@ result['details'].findAll { it['status'] == 'missing' }.each {
 Counts include `filesMatched`, `filesPlanned`, `filesChanged`, `filesUnchanged`,
 `substitutionsMatched`, `substitutionsMissing` and `warnings`. `details` is an ordered list of
 per-pattern and per-substitution records. The result contains no values and no credential IDs.
+
+## What this plugin can access
+
+Everything it touches, in one table, so that reviewing it before installation does not mean reading
+the source.
+
+| | It can | It cannot |
+|---|---|---|
+| **Files** | Read and rewrite the files matched by your `files` patterns, replacing existing values in place | Touch anything outside the build's workspace, or create, move, rename or delete anything. Confinement is decided on the resolved real path, so symlinks and Windows junctions do not escape it |
+| **Credentials** | Resolve **Secret Text** credentials the job is already authorised to use | Resolve one it is not authorised for. At run time an unauthorised ID fails exactly as an absent one does, so a failure reveals nothing about whether it exists |
+| **Host** | — | Reach the network, start a process, or read environment variables or system properties. Config Splice makes no such calls |
+| **Output** | Write per-file counts to the build log, and return a result map to the Pipeline | Put a resolved value, or a credential ID, into either one |
+
+Configuring the step needs **Item/Configure** on the job — **Administer** where there is no job yet —
+and that check guards the form validation and the option dropdowns too. The credential picker is
+guarded separately, by **Item/ExtendedRead** or **Credentials/UseItem**: a caller without either is
+shown the value already configured and nothing else, so the dropdown cannot be used to discover which
+credential IDs exist.
+
+What outlives the build is the job configuration: your paths, patterns, options and credential *IDs*.
+Resolved credential values are not persisted, not logged and not returned. A literal in `value:` *is*
+persisted with the job, which is the reason secrets belong in `credentialsId:`.
 
 ## Behaviour worth knowing
 
